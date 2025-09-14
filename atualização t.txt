@@ -1,0 +1,4504 @@
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//
+//                             CREDITOS AO
+//                              BACTERIA
+//            Sistema Completo de Roleplay Avançado
+//                          VERSÃO COMPLETA
+//
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#include <a_samp>
+#include <DOF2>
+#include <zcmd>
+#include <Dini>
+#include <sscanf2>
+#include <streamer>
+#include <float>
+#pragma disablerecursion
+
+// Define necessária para textdraws
+#if !defined INVALID_PLAYER_TEXT_DRAW
+    #define INVALID_PLAYER_TEXT_DRAW (PlayerText:0xFFFF)
+#endif
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#define PASTA_CONTAS                    "Contas/%s.ini"
+#define PASTA_CASAS                     "Casas/casa_%d.ini"
+#define PASTA_EMPRESAS                  "Empresas/empresa_%d.ini"
+#define PASTA_FACCOES                   "Faccoes/faccao_%d.ini"
+#define PASTA_VEICULOS                  "Veiculos/veiculo_%d.ini"
+
+#define SCM                             SendClientMessage
+#define SCMTA                           SendClientMessageToAll
+#define SPD                             ShowPlayerDialog
+#define GPN                             GetPlayerName
+#define GPI                             GetPlayerInterior
+#define GPS                             GetPlayerState
+#define GPV                             GetPlayerVehicleID
+
+// Dialog IDs
+#define D_SENHA                         0
+#define D_GENERO                        1
+#define D_IDADE                         2
+#define D_RG                            3
+#define D_TITULOS                       4
+#define D_CASA_MENU                     5
+#define D_CASA_COMPRAR                  6
+#define D_EMPRESA_MENU                  7
+#define D_EMPRESA_COMPRAR               8
+#define D_BANCO_MENU                    9
+#define D_EMPREGO_MENU                  10
+#define D_ADMIN_MENU                    11
+#define D_TELEPORTS                     12
+#define D_ARMAS_MENU                    13
+#define D_VEICULOS_MENU                 14
+#define D_FACCAO_MENU                   15
+
+// Textdraw Limits
+#define MAX_LOGIN_TEXTDRAWS             20
+#define MAX_RG_TEXTDRAWS                30
+#define MAX_HUD_TEXTDRAWS              15
+
+// Sistema Limits
+#define MAX_CASAS                       200
+#define MAX_EMPRESAS                    50
+#define MAX_FACCOES                     10
+#define MAX_SPAWN_VEICULOS             100
+#define MAX_EMPREGOS                    20
+
+// Cores para o sistema - Design Moderno Purple/Pink
+#define COR_PRINCIPAL                   0x9F2B8EFF   // Roxo principal
+#define COR_SECUNDARIA                  0x6A1B9AFF   // Roxo escuro
+#define COR_ACCENT                      0xE91E63FF   // Pink/Rosa
+#define COR_FUNDO                       0x1A1A1AEE   // Preto transparente
+#define COR_BRANCO                      0xFFFFFFFF   // Branco
+#define COR_VERMELHO                    0xF44336FF   // Vermelho
+#define COR_VERDE                       0x4CAF50FF   // Verde
+#define COR_DOURADO                     0xFFD700FF   // Dourado
+#define COR_AZUL                        0x2196F3FF   // Azul
+#define COR_LARANJA                     0xFF9800FF   // Laranja
+#define COR_CINZA                       0x9E9E9EFF   // Cinza
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+enum pInfo
+{
+    Senha[32],
+    Email[64],
+    Dinheiro,
+    Level,
+    Experiencia,
+    Skin,
+    Genero,
+    Admin,
+    Helper,
+    Vip,
+    
+    // Informações pessoais
+    Idade,
+    Altura,
+    Peso,
+    Emprego,
+    EmpregoLevel,
+    Salario,
+    UltimoPagamento,
+    Titulo[64],
+    Nascimento[32],
+    Nacionalidade[32],
+    EstadoCivil[32],
+    
+    // Localização e Estado
+    Interior,
+    VirtualW,
+    Float:VidaHP,
+    Float:ColeteHP,
+    Float:PosX,
+    Float:PosY,
+    Float:PosZ,
+    Float:PosR,
+    
+    // Estatísticas de Jogo
+    HorasJogadas,
+    MinutosJogados,
+    Mortes,
+    Kills,
+    TempoPreso,
+    TempoPrisao,
+    Crimes,
+    Multas,
+    Avisos,
+    
+    // Sistema Bancário
+    ContaBanco,
+    SenhaBanco[8],
+    
+    // Sistema de Casas
+    CasaID,
+    CasaChave,
+    
+    // Sistema de Empresas
+    EmpresaID,
+    EmpresaDono,
+    
+    // Sistema de Facções
+    FaccaoID,
+    FaccaoRank,
+    
+    // Sistema de Veículos
+    VeiculoSlot1,
+    VeiculoSlot2,
+    VeiculoSlot3,
+    
+    // Sistema de Armas (Licenças)
+    LicencaArmas,
+    LicencaVoo,
+    LicencaBarco,
+    LicencaVeiculo,
+    
+    // Sistema de Drogas/Crime
+    Maconha,
+    Cocaina,
+    Crack,
+    ProcuradoNivel,
+    ProcuradoTempo,
+    
+    // Configurações
+    MensagensPrivadas,
+    SomAtivado,
+    ChatGlobal
+};
+new PlayerInfo[MAX_PLAYERS][pInfo];
+
+// Sistema de Casas
+enum cInfo
+{
+    Float:CasaX,
+    Float:CasaY,
+    Float:CasaZ,
+    Float:CasaIntX,
+    Float:CasaIntY,
+    Float:CasaIntZ,
+    CasaInt,
+    CasaVW,
+    CasaPreco,
+    CasaDono[MAX_PLAYER_NAME],
+    CasaAluguel,
+    CasaFechada,
+    CasaVenda,
+    Text3D:CasaLabel,
+    CasaPickup
+};
+new CasaInfo[MAX_CASAS][cInfo];
+new TotalCasas = 0;
+
+// Sistema de Empresas
+enum eInfo
+{
+    Float:EmpresaX,
+    Float:EmpresaY,
+    Float:EmpresaZ,
+    Float:EmpresaIntX,
+    Float:EmpresaIntY,
+    Float:EmpresaIntZ,
+    EmpresaInt,
+    EmpresaVW,
+    EmpresaNome[64],
+    EmpresaTipo,
+    EmpresaPreco,
+    EmpresaDono[MAX_PLAYER_NAME],
+    EmpresaCofre,
+    EmpresaLucro,
+    EmpresaVenda,
+    Text3D:EmpresaLabel,
+    EmpresaPickup
+};
+new EmpresaInfo[MAX_EMPRESAS][eInfo];
+new TotalEmpresas = 0;
+
+// Sistema de Facções
+enum fInfo
+{
+    FaccaoNome[64],
+    FaccaoTag[8],
+    FaccaoTipo, // 0=Civil, 1=Policia, 2=Exercito, 3=Medicos, 4=Crime
+    FaccaoMembros,
+    FaccaoMaxMembros,
+    FaccaoBank,
+    FaccaoLider[MAX_PLAYER_NAME],
+    FaccaoSubLider[MAX_PLAYER_NAME],
+    Float:FaccaoSpawnX,
+    Float:FaccaoSpawnY,
+    Float:FaccaoSpawnZ,
+    FaccaoAtiva
+};
+new FaccaoInfo[MAX_FACCOES][fInfo];
+new TotalFaccoes = 0;
+
+// Sistema de Veículos
+enum vInfo
+{
+    VeiculoModelo,
+    Float:VeiculoX,
+    Float:VeiculoY,
+    Float:VeiculoZ,
+    Float:VeiculoRotacao,
+    VeiculoCor1,
+    VeiculoCor2,
+    VeiculoGasolina,
+    VeiculoKM,
+    VeiculoDono[MAX_PLAYER_NAME],
+    VeiculoPreco,
+    VeiculoVenda,
+    VeiculoFaccao,
+    VeiculoEmprego,
+    VeiculoID
+};
+new VeiculoInfo[MAX_SPAWN_VEICULOS][vInfo];
+new TotalVeiculos = 0;
+
+// Sistema de Empregos
+new NomesEmpregos[MAX_EMPREGOS][32] = {
+    "Desempregado", "Gari", "Taxista", "Motorista de Ônibus", "Caminhoneiro",
+    "Mecânico", "Vendedor", "Segurança", "Jornalista", "DJ",
+    "Médico", "Policial", "Bombeiro", "Piloto", "Pescador",
+    "Minerador", "Fazendeiro", "Chef", "Advogado", "Professor"
+};
+
+new SalariosEmpregos[MAX_EMPREGOS] = {
+    0, 800, 1200, 1000, 1500,
+    1300, 900, 1100, 1400, 1000,
+    2500, 2000, 1800, 3000, 700,
+    900, 800, 1600, 2200, 1900
+};
+
+// Sistema de Administração
+new NiveisAdmin[][32] = {
+    "Jogador", "Helper", "Moderador", "Administrador", 
+    "Administrador Geral", "Sub-Dono", "Dono"
+};
+
+// Variables globais
+new arquivo[256];
+new gString[256];
+new VSenha[MAX_PLAYERS][32];
+new VEmail[MAX_PLAYERS][64];
+new VGenero[MAX_PLAYERS];
+new VIdade[MAX_PLAYERS];
+new TentativasSenha[MAX_PLAYERS];
+
+new bool:VerificarLogin[MAX_PLAYERS];
+new bool:EstaRegistrado[MAX_PLAYERS];
+new bool:TextDrawsLoginCriados[MAX_PLAYERS];
+new bool:TextDrawsRGCriados[MAX_PLAYERS];
+new bool:TextDrawsHUDCriados[MAX_PLAYERS];
+
+// Sistema de Textdraws Modernos
+new PlayerText:LoginTD[MAX_PLAYERS][MAX_LOGIN_TEXTDRAWS];
+new PlayerText:RGTD[MAX_PLAYERS][MAX_RG_TEXTDRAWS];
+new PlayerText:HUDTD[MAX_PLAYERS][MAX_HUD_TEXTDRAWS];
+
+// Sistema de Títulos
+new ListaTitulos[][64] = {
+    "Cidadão Comum", "Trabalhador Exemplar", "Empresário Iniciante", "Milionário", "Novato",
+    "Veterano", "Lenda Urbana", "Respeitado", "Temido", "Herói da Cidade",
+    "Criminoso Procurado", "Ex-Presidiário", "Policial Honrado", "Médico Dedicado", "Corrupto",
+    "Santo", "Demônio", "Playboy", "Workaholic", "Sortudo",
+    "Azarado", "Viciado em Velocidade", "Negociador", "Líder", "Revolucionário"
+};
+
+new TitulosDesbloqueados[MAX_PLAYERS][sizeof(ListaTitulos)];
+
+// Sistema de Pickups
+new PickupBanco, PickupDMV, PickupHospital, PickupDelegacia;
+new PickupPrefeitura, PickupAeroporto, PickupPorto, PickupAutoEscola;
+
+// Forwards necessários
+forward LimparMensagemLogin(playerid);
+forward UmSegundo();
+forward PagamentoSalario();
+forward AtualizarHUD(playerid);
+forward LimparDadosTemporarios();
+forward KickPlayer(playerid);
+forward MensagemAutomatica();
+forward CarregarCasas();
+forward CarregarEmpresas();
+forward CarregarFaccoes();
+forward CarregarVeiculos();
+forward SalvarCasa(casaid);
+forward SalvarEmpresa(empresaid);
+forward ProcessarPagamentos();
+forward VerificarJogadoresOnline();
+forward AntiFlood();
+
+// Variáveis de controle
+new ServerHora = 12, ServerMinuto = 0;
+new MensagemAtual = 0;
+new UltimoSalario = 0;
+
+// Sistema de Anti-Flood
+new UltimaMensagem[MAX_PLAYERS];
+new MensagensEnviadas[MAX_PLAYERS];
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+main()
+{
+    print("\n===============================================");
+    print("        GAMEMODE ROLEPLAY INICIADO            ");
+    print("           Criado por: BACTERIA               ");
+    print("         Versão: 1.0 - COMPLETA              ");
+    print("===============================================\n");
+}
+
+public OnGameModeInit()
+{
+    ShowPlayerMarkers(0);
+    ShowNameTags(1);
+    UsePlayerPedAnims();
+    DisableInteriorEnterExits();
+    EnableStuntBonusForAll(0);
+    SetGameModeText("Roleplay by BACTERIA v1.0");
+    SetWorldTime(ServerHora);
+    
+    // Configurar limite de jogadores
+    print("Configurando sistema do servidor...");
+    
+    // Inicializar sistemas
+    InicializarSistemas();
+    
+    // Carregar dados salvos
+    CarregarCasas();
+    CarregarEmpresas(); 
+    CarregarFaccoes();
+    CarregarVeiculos();
+    
+    // Criar pickups principais
+    CriarPickupsPrincipais();
+    
+    // Criar mapeamento
+    CriarMapeamento();
+    
+    // Timers do sistema
+    SetTimer("UmSegundo", 1000, true);
+    SetTimer("PagamentoSalario", 3600000, true); // 1 hora
+    SetTimer("ProcessarPagamentos", 60000, true); // 1 minuto
+    SetTimer("VerificarJogadoresOnline", 30000, true); // 30 segundos
+    SetTimer("AntiFlood", 1000, true);
+    
+    print("Servidor carregado com sucesso!");
+    printf("Total de casas carregadas: %d", TotalCasas);
+    printf("Total de empresas carregadas: %d", TotalEmpresas);
+    printf("Total de facções carregadas: %d", TotalFaccoes);
+    printf("Total de veículos carregados: %d", TotalVeiculos);
+    
+    return 1;
+}
+
+public OnGameModeExit()
+{
+    // Salvar todos os dados antes de sair
+    for(new i = 0; i < MAX_PLAYERS; i++)
+    {
+        if(IsPlayerConnected(i) && VerificarLogin[i])
+        {
+            SalvarDados(i);
+            DestruirTextdrawsLogin(i);
+            DestruirTextdrawsRG(i);
+            DestruirTextdrawsHUD(i);
+        }
+    }
+    
+    // Salvar dados do servidor
+    for(new i = 0; i < TotalCasas; i++)
+    {
+        SalvarCasa(i);
+    }
+    
+    for(new i = 0; i < TotalEmpresas; i++)
+    {
+        SalvarEmpresa(i);
+    }
+    
+    DOF2_Exit();
+    print("Servidor finalizado. Todos os dados foram salvos.");
+    return 1;
+}
+
+public OnPlayerRequestClass(playerid, classid)
+{
+    #pragma unused classid
+    
+    format(arquivo, sizeof(arquivo), PASTA_CONTAS, GetPlayerNameEx(playerid));
+    
+    // Configurar camera para tela de login moderna
+    SetPlayerCameraPos(playerid, 1958.3783, 1343.1572, 15.3746);
+    SetPlayerCameraLookAt(playerid, 1958.3783, 1343.1572, 15.3746);
+    
+    if(!DOF2_FileExists(arquivo))
+    {
+        EstaRegistrado[playerid] = false;
+        format(VSenha[playerid], 32, "");
+        format(VEmail[playerid], 64, "");
+        VGenero[playerid] = -1;
+        VIdade[playerid] = 0;
+        
+        // Mostrar interface de registro moderna
+        MostrarTelaRegistroModerna(playerid);
+    }
+    else
+    {
+        EstaRegistrado[playerid] = true;
+        format(VSenha[playerid], 32, "");
+        TentativasSenha[playerid] = 0;
+        
+        // Mostrar interface de login moderna
+        MostrarTelaLoginModerna(playerid);
+    }
+    
+    LimparChat(playerid, 30);
+    TogglePlayerSpectating(playerid, 1);
+    SetPlayerColor(playerid, COR_PRINCIPAL);
+    
+    return 1;
+}
+
+public OnPlayerConnect(playerid)
+{
+    // Resetar todas as variáveis do jogador
+    ResetarVariaveisPlayer(playerid);
+    
+    // Mensagem de entrada
+    format(gString, sizeof(gString), "{9F2B8E}» {FFFFFF}%s {9F2B8E}conectou-se ao servidor!", GetPlayerNameEx(playerid));
+    SCMTA(COR_BRANCO, gString);
+    
+    // Log de conexão
+    printf("[CONNECT] %s (%d) conectou-se ao servidor. IP: %s", GetPlayerNameEx(playerid), playerid, GetPlayerIP(playerid));
+    
+    return 1;
+}
+
+public OnPlayerDisconnect(playerid, reason)
+{
+    if(VerificarLogin[playerid])
+    {
+        SalvarDados(playerid);
+        
+        // Log de saída
+        new reasontext[32];
+        switch(reason)
+        {
+            case 0: reasontext = "Timeout/Crash";
+            case 1: reasontext = "Quit";
+            case 2: reasontext = "Kick/Ban";
+        }
+        
+        printf("[DISCONNECT] %s (%d) desconectou-se. Motivo: %s", GetPlayerNameEx(playerid), playerid, reasontext);
+        
+        // Mensagem de saída
+        format(gString, sizeof(gString), "{9F2B8E}» {FFFFFF}%s {9F2B8E}desconectou-se do servidor. (%s)", GetPlayerNameEx(playerid), reasontext);
+        SCMTA(COR_BRANCO, gString);
+    }
+    
+    // Destruir textdraws
+    DestruirTextdrawsLogin(playerid);
+    DestruirTextdrawsRG(playerid);
+    DestruirTextdrawsHUD(playerid);
+    
+    // Reset das variáveis
+    ResetarVariaveisPlayer(playerid);
+    
+    return 1;
+}
+
+public OnPlayerSpawn(playerid)
+{
+    if(!VerificarLogin[playerid])
+    {
+        Kick(playerid);
+        return 1;
+    }
+    
+    // Configurar spawn baseado na facção/emprego
+    ConfigurarSpawn(playerid);
+    
+    // Restaurar estado do jogador
+    RestaurarEstadoPlayer(playerid);
+    
+    // Criar HUD moderno
+    CriarHUDModerno(playerid);
+    
+    // Mensagem de spawn
+    SCM(playerid, COR_VERDE, "{4CAF50}» {FFFFFF}Você foi spawnado com sucesso! Use {4CAF50}/ajuda {FFFFFF}para ver os comandos disponíveis.");
+    
+    return 1;
+}
+
+public OnPlayerDeath(playerid, killerid, reason)
+{
+    PlayerInfo[playerid][Mortes]++;
+    
+    if(IsPlayerConnected(killerid) && killerid != INVALID_PLAYER_ID)
+    {
+        PlayerInfo[killerid][Kills]++;
+        PlayerInfo[killerid][Experiencia] += 5;
+        
+        format(gString, sizeof(gString), "{F44336}☠ {FFFFFF}%s foi morto por %s", GetPlayerNameEx(playerid), GetPlayerNameEx(killerid));
+        SCMTA(COR_BRANCO, gString);
+        
+        // Sistema de recompensa por kill
+        new recompensa = random(500) + 100;
+        GivePlayerMoney(killerid, recompensa);
+        format(gString, sizeof(gString), "{4CAF50}» {FFFFFF}Você recebeu ${4CAF50}%d {FFFFFF}por matar %s!", recompensa, GetPlayerNameEx(playerid));
+        SCM(killerid, COR_VERDE, gString);
+    }
+    else
+    {
+        format(gString, sizeof(gString), "{F44336}☠ {FFFFFF}%s morreu", GetPlayerNameEx(playerid));
+        SCMTA(COR_BRANCO, gString);
+    }
+    
+    return 1;
+}
+
+public OnPlayerText(playerid, text[])
+{
+    if(!VerificarLogin[playerid])
+    {
+        GameTextForPlayer(playerid, "~r~ERRO: ~w~Faça login primeiro!", 3000, 3);
+        return 0;
+    }
+    
+    // Sistema anti-flood
+    if(gettime() - UltimaMensagem[playerid] < 2)
+    {
+        MensagensEnviadas[playerid]++;
+        if(MensagensEnviadas[playerid] >= 3)
+        {
+            SCM(playerid, COR_VERMELHO, "{F44336}» {FFFFFF}Você está falando muito rápido! Aguarde um pouco.");
+            return 0;
+        }
+    }
+    else
+    {
+        MensagensEnviadas[playerid] = 0;
+    }
+    UltimaMensagem[playerid] = gettime();
+    
+    // Chat IC formatado com design moderno
+    if(text[0] == '!')
+    {
+        // Chat OOC
+        format(gString, sizeof(gString), "{9E9E9E}(( {FFFFFF}%s[%d]: {9E9E9E}%s {9E9E9E}))", GetPlayerNameEx(playerid), playerid, text[1]);
+        
+        new Float:x, Float:y, Float:z;
+        GetPlayerPos(playerid, x, y, z);
+        
+        for(new i = 0; i < MAX_PLAYERS; i++)
+        {
+            if(IsPlayerConnected(i) && GetPlayerVirtualWorld(i) == GetPlayerVirtualWorld(playerid))
+            {
+                if(IsPlayerInRangeOfPoint(i, 20.0, x, y, z))
+                {
+                    SCM(i, COR_BRANCO, gString);
+                }
+            }
+        }
+    }
+    else
+    {
+        // Chat IC
+        format(gString, sizeof(gString), "{FFFFFF}%s diz: {E0E0E0}%s", GetPlayerNameEx(playerid), text);
+        
+        new Float:x, Float:y, Float:z;
+        GetPlayerPos(playerid, x, y, z);
+        
+        for(new i = 0; i < MAX_PLAYERS; i++)
+        {
+            if(IsPlayerConnected(i) && GetPlayerVirtualWorld(i) == GetPlayerVirtualWorld(playerid))
+            {
+                if(IsPlayerInRangeOfPoint(i, 20.0, x, y, z))
+                {
+                    SCM(i, COR_BRANCO, gString);
+                }
+            }
+        }
+    }
+    
+    return 0;
+}
+
+public OnPlayerCommandText(playerid, cmdtext[])
+{
+    return 0;
+}
+
+public OnPlayerClickPlayerTextDraw(playerid, PlayerText:playertextid)
+{
+    if(playertextid == INVALID_PLAYER_TEXT_DRAW) return 1;
+    
+    // Sistema de Login/Registro Moderno
+    if(TextDrawsLoginCriados[playerid])
+    {
+        // Campo de senha/email (ID 5)
+        if(playertextid == LoginTD[playerid][5])
+        {
+            if(EstaRegistrado[playerid])
+            {
+                SPD(playerid, D_SENHA, DIALOG_STYLE_PASSWORD, 
+                    "{9F2B8E}• {FFFFFF}LOGIN - Digite sua Senha", 
+                    "{FFFFFF}Digite sua senha para acessar o servidor:\n\n{9E9E9E}• A senha é case-sensitive\n{9E9E9E}• Máximo 3 tentativas", 
+                    "Entrar", "Cancelar");
+            }
+            else
+            {
+                SPD(playerid, D_SENHA, DIALOG_STYLE_PASSWORD, 
+                    "{9F2B8E}• {FFFFFF}REGISTRO - Crie uma Senha", 
+                    "{FFFFFF}Crie uma senha segura para sua conta:\n\n{9E9E9E}• Mínimo 6 caracteres\n{9E9E9E}• Máximo 20 caracteres\n{9E9E9E}• Use letras e números", 
+                    "Continuar", "Cancelar");
+            }
+            return 1;
+        }
+        
+        // Botão Login/Registrar (ID 8)
+        if(playertextid == LoginTD[playerid][8])
+        {
+            if(EstaRegistrado[playerid])
+            {
+                // Processo de login
+                if(strlen(VSenha[playerid]) < 1)
+                {
+                    GameTextForPlayer(playerid, "~r~Digite sua senha primeiro!", 3000, 3);
+                    return 1;
+                }
+                
+                format(arquivo, sizeof(arquivo), PASTA_CONTAS, GetPlayerNameEx(playerid));
+                new senhaArquivo[32];
+                DOF2_GetString(arquivo, "Senha", senhaArquivo, 32);
+                
+                // Verificar senha hasheada
+                if(VerificarSenha(VSenha[playerid], senhaArquivo))
+                {
+                    EsconderTextdrawsLogin(playerid);
+                    CarregarDadosPlayer(playerid);
+                    GameTextForPlayer(playerid, "~g~Login realizado com sucesso!", 3000, 3);
+                }
+                else
+                {
+                    TentativasSenha[playerid]++;
+                    if(TentativasSenha[playerid] >= 3)
+                    {
+                        GameTextForPlayer(playerid, "~r~Muitas tentativas incorretas!~n~~w~Desconectando...", 3000, 3);
+                        SetTimerEx("KickPlayer", 3000, false, "i", playerid);
+                    }
+                    else
+                    {
+                        format(gString, sizeof(gString), "~r~Senha incorreta!~n~~w~Tentativa %d/3", TentativasSenha[playerid]);
+                        GameTextForPlayer(playerid, gString, 3000, 3);
+                    }
+                }
+            }
+            else
+            {
+                // Processo de registro
+                if(strlen(VSenha[playerid]) < 6)
+                {
+                    GameTextForPlayer(playerid, "~r~Digite uma senha valida primeiro!", 3000, 3);
+                    return 1;
+                }
+                
+                EsconderTextdrawsLogin(playerid);
+                SPD(playerid, D_GENERO, DIALOG_STYLE_LIST, 
+                    "{9F2B8E}• {FFFFFF}REGISTRO - Escolha seu Gênero", 
+                    "{FFFFFF}🚹 Masculino\n{FFFFFF}🚺 Feminino", 
+                    "Continuar", "Voltar");
+            }
+            return 1;
+        }
+    }
+    
+    // Sistema de RG
+    if(TextDrawsRGCriados[playerid])
+    {
+        // Botão fechar RG
+        if(playertextid == RGTD[playerid][25])
+        {
+            EsconderRG(playerid);
+            return 1;
+        }
+    }
+    
+    return 1;
+}
+
+public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
+{
+    switch(dialogid)
+    {
+        case D_SENHA:
+        {
+            if(response)
+            {
+                if(strlen(inputtext) < 6 || strlen(inputtext) > 20)
+                {
+                    if(EstaRegistrado[playerid])
+                    {
+                        SPD(playerid, D_SENHA, DIALOG_STYLE_PASSWORD, 
+                            "{9F2B8E}• {FFFFFF}LOGIN - Digite sua Senha", 
+                            "{F44336}Senha inválida!\n{FFFFFF}Digite sua senha para acessar o servidor:", 
+                            "Entrar", "Cancelar");
+                    }
+                    else
+                    {
+                        SPD(playerid, D_SENHA, DIALOG_STYLE_PASSWORD, 
+                            "{9F2B8E}• {FFFFFF}REGISTRO - Crie uma Senha", 
+                            "{F44336}A senha deve ter entre 6-20 caracteres!\n{FFFFFF}Crie uma senha segura para sua conta:", 
+                            "Continuar", "Cancelar");
+                    }
+                    return 1;
+                }
+                
+                format(VSenha[playerid], 32, "%s", inputtext);
+                
+                if(EstaRegistrado[playerid])
+                {
+                    MostrarTelaLoginModerna(playerid);
+                    PlayerTextDrawSetString(playerid, LoginTD[playerid][6], "********");
+                    PlayerTextDrawShow(playerid, LoginTD[playerid][6]);
+                }
+                else
+                {
+                    MostrarTelaRegistroModerna(playerid);
+                    PlayerTextDrawSetString(playerid, LoginTD[playerid][6], "********");
+                    PlayerTextDrawShow(playerid, LoginTD[playerid][6]);
+                }
+            }
+            else
+            {
+                if(EstaRegistrado[playerid]) MostrarTelaLoginModerna(playerid);
+                else MostrarTelaRegistroModerna(playerid);
+            }
+        }
+        
+        case D_GENERO:
+        {
+            if(response)
+            {
+                VGenero[playerid] = listitem;
+                SPD(playerid, D_IDADE, DIALOG_STYLE_INPUT, 
+                    "{9F2B8E}• {FFFFFF}REGISTRO - Digite sua Idade", 
+                    "{FFFFFF}Digite sua idade (entre 16 e 80 anos):\n\n{9E9E9E}• Sua idade afetará algumas funcionalidades\n{9E9E9E}• Você poderá alterar apenas uma vez", 
+                    "Continuar", "Voltar");
+            }
+            else
+            {
+                MostrarTelaRegistroModerna(playerid);
+            }
+        }
+        
+        case D_IDADE:
+        {
+            if(response)
+            {
+                new idade = strval(inputtext);
+                if(idade < 16 || idade > 80)
+                {
+                    SPD(playerid, D_IDADE, DIALOG_STYLE_INPUT, 
+                        "{9F2B8E}• {FFFFFF}REGISTRO - Digite sua Idade", 
+                        "{F44336}Idade inválida! (16-80 anos)\n{FFFFFF}Digite sua idade:", 
+                        "Continuar", "Voltar");
+                    return 1;
+                }
+                
+                VIdade[playerid] = idade;
+                
+                // Finalizar registro
+                CriarConta(playerid);
+            }
+            else
+            {
+                SPD(playerid, D_GENERO, DIALOG_STYLE_LIST, 
+                    "{9F2B8E}• {FFFFFF}REGISTRO - Escolha seu Gênero", 
+                    "{FFFFFF}🚹 Masculino\n{FFFFFF}🚺 Feminino", 
+                    "Continuar", "Voltar");
+            }
+        }
+        
+        case D_RG:
+        {
+            // Sistema RG - Apenas fechar
+        }
+        
+        case D_TITULOS:
+        {
+            if(response && listitem < sizeof(ListaTitulos))
+            {
+                format(PlayerInfo[playerid][Titulo], 64, "%s", ListaTitulos[listitem]);
+                format(gString, sizeof(gString), "{9F2B8E}» {FFFFFF}Título alterado para: {FFD700}%s", ListaTitulos[listitem]);
+                SCM(playerid, COR_BRANCO, gString);
+                SalvarDados(playerid);
+            }
+        }
+        
+        case D_CASA_MENU:
+        {
+            if(!response) return 1;
+            
+            switch(listitem)
+            {
+                case 0: // Entrar
+                {
+                    new casaid = PlayerInfo[playerid][CasaID];
+                    if(casaid != -1)
+                    {
+                        SetPlayerPos(playerid, CasaInfo[casaid][CasaIntX], CasaInfo[casaid][CasaIntY], CasaInfo[casaid][CasaIntZ]);
+                        SetPlayerInterior(playerid, CasaInfo[casaid][CasaInt]);
+                        SetPlayerVirtualWorld(playerid, CasaInfo[casaid][CasaVW]);
+                        SCM(playerid, COR_VERDE, "{4CAF50}» {FFFFFF}Você entrou em sua casa!");
+                    }
+                }
+                case 1: // Informações
+                {
+                    // Mostrar informações da casa
+                    new casaid = PlayerInfo[playerid][CasaID];
+                    if(casaid != -1)
+                    {
+                        format(gString, sizeof(gString), 
+                            "{9F2B8E}• INFORMAÇÕES DA CASA\n\n{FFFFFF}ID: %d\nDono: %s\nPreço: $%d\nAluguel: $%d/hora", 
+                            casaid, CasaInfo[casaid][CasaDono], CasaInfo[casaid][CasaPreco], CasaInfo[casaid][CasaAluguel]);
+                        SPD(playerid, D_CASA_MENU, DIALOG_STYLE_MSGBOX, "{9F2B8E}• Casa - Informações", gString, "Fechar", "");
+                    }
+                }
+                case 2: // Vender
+                {
+                    new casaid = PlayerInfo[playerid][CasaID];
+                    if(casaid != -1)
+                    {
+                        new preco = CasaInfo[casaid][CasaPreco] / 2;
+                        PlayerInfo[playerid][Dinheiro] += preco;
+                        PlayerInfo[playerid][CasaID] = -1;
+                        format(CasaInfo[casaid][CasaDono], MAX_PLAYER_NAME, "Ninguem");
+                        CasaInfo[casaid][CasaVenda] = 1;
+                        AtualizarLabelCasa(casaid);
+                        
+                        format(gString, sizeof(gString), "{4CAF50}» {FFFFFF}Você vendeu sua casa por ${4CAF50}%d", preco);
+                        SCM(playerid, COR_VERDE, gString);
+                        SalvarCasa(casaid);
+                        SalvarDados(playerid);
+                    }
+                }
+            }
+        }
+        
+        case D_EMPRESA_MENU:
+        {
+            if(!response) return 1;
+            
+            new empresaid = PlayerInfo[playerid][EmpresaID];
+            if(empresaid == -1) return 1;
+            
+            switch(listitem)
+            {
+                case 0: // Entrar
+                {
+                    SetPlayerPos(playerid, EmpresaInfo[empresaid][EmpresaIntX], EmpresaInfo[empresaid][EmpresaIntY], EmpresaInfo[empresaid][EmpresaIntZ]);
+                    SetPlayerInterior(playerid, EmpresaInfo[empresaid][EmpresaInt]);
+                    SetPlayerVirtualWorld(playerid, EmpresaInfo[empresaid][EmpresaVW]);
+                    SCM(playerid, COR_VERDE, "{4CAF50}» {FFFFFF}Você entrou em sua empresa!");
+                }
+                case 1: // Retirar dinheiro
+                {
+                    if(EmpresaInfo[empresaid][EmpresaCofre] > 0)
+                    {
+                        PlayerInfo[playerid][Dinheiro] += EmpresaInfo[empresaid][EmpresaCofre];
+                        format(gString, sizeof(gString), "{4CAF50}» {FFFFFF}Você retirou ${4CAF50}%d {FFFFFF}do cofre da empresa!", EmpresaInfo[empresaid][EmpresaCofre]);
+                        SCM(playerid, COR_VERDE, gString);
+                        EmpresaInfo[empresaid][EmpresaCofre] = 0;
+                        SalvarEmpresa(empresaid);
+                        SalvarDados(playerid);
+                    }
+                    else
+                    {
+                        SCM(playerid, COR_VERMELHO, "{F44336}» {FFFFFF}O cofre da empresa está vazio!");
+                    }
+                }
+                case 2: // Vender empresa
+                {
+                    new preco = EmpresaInfo[empresaid][EmpresaPreco] / 2;
+                    PlayerInfo[playerid][Dinheiro] += preco;
+                    PlayerInfo[playerid][EmpresaID] = -1;
+                    format(EmpresaInfo[empresaid][EmpresaDono], MAX_PLAYER_NAME, "Ninguem");
+                    EmpresaInfo[empresaid][EmpresaVenda] = 1;
+                    AtualizarLabelEmpresa(empresaid);
+                    
+                    format(gString, sizeof(gString), "{4CAF50}» {FFFFFF}Você vendeu sua empresa por ${4CAF50}%d", preco);
+                    SCM(playerid, COR_VERDE, gString);
+                    SalvarEmpresa(empresaid);
+                    SalvarDados(playerid);
+                }
+            }
+        }
+        
+        case D_BANCO_MENU:
+        {
+            if(!response) return 1;
+            
+            switch(listitem)
+            {
+                case 0: // Depositar
+                {
+                    SPD(playerid, 100, DIALOG_STYLE_INPUT, "{9F2B8E}• Banco - Depositar", 
+                        "{FFFFFF}Digite o valor que deseja depositar:", "Depositar", "Cancelar");
+                }
+                case 1: // Sacar
+                {
+                    SPD(playerid, 101, DIALOG_STYLE_INPUT, "{9F2B8E}• Banco - Sacar", 
+                        "{FFFFFF}Digite o valor que deseja sacar:", "Sacar", "Cancelar");
+                }
+                case 2: // Extrato
+                {
+                    format(gString, sizeof(gString), 
+                        "{9F2B8E}• EXTRATO BANCÁRIO\n\n{FFFFFF}Conta: %d\nSaldo: $%d\nDinheiro em mãos: $%d", 
+                        PlayerInfo[playerid][ContaBanco], PlayerInfo[playerid][ContaBanco], GetPlayerMoney(playerid));
+                    SPD(playerid, D_BANCO_MENU, DIALOG_STYLE_MSGBOX, "{9F2B8E}• Banco - Extrato", gString, "Fechar", "");
+                }
+            }
+        }
+        
+        case 100: // Depositar
+        {
+            if(response)
+            {
+                new valor = strval(inputtext);
+                if(valor <= 0 || valor > GetPlayerMoney(playerid))
+                {
+                    SCM(playerid, COR_VERMELHO, "{F44336}» {FFFFFF}Valor inválido!");
+                    return 1;
+                }
+                
+                GivePlayerMoney(playerid, -valor);
+                PlayerInfo[playerid][ContaBanco] += valor;
+                format(gString, sizeof(gString), "{4CAF50}» {FFFFFF}Você depositou ${4CAF50}%d {FFFFFF}em sua conta!", valor);
+                SCM(playerid, COR_VERDE, gString);
+                SalvarDados(playerid);
+            }
+        }
+        
+        case 101: // Sacar
+        {
+            if(response)
+            {
+                new valor = strval(inputtext);
+                if(valor <= 0 || valor > PlayerInfo[playerid][ContaBanco])
+                {
+                    SCM(playerid, COR_VERMELHO, "{F44336}» {FFFFFF}Valor inválido ou saldo insuficiente!");
+                    return 1;
+                }
+                
+                GivePlayerMoney(playerid, valor);
+                PlayerInfo[playerid][ContaBanco] -= valor;
+                format(gString, sizeof(gString), "{4CAF50}» {FFFFFF}Você sacou ${4CAF50}%d {FFFFFF}de sua conta!", valor);
+                SCM(playerid, COR_VERDE, gString);
+                SalvarDados(playerid);
+            }
+        }
+        
+        case D_EMPREGO_MENU:
+        {
+            if(response && listitem < MAX_EMPREGOS)
+            {
+                PlayerInfo[playerid][Emprego] = listitem;
+                PlayerInfo[playerid][EmpregoLevel] = 1;
+                PlayerInfo[playerid][Salario] = SalariosEmpregos[listitem];
+                
+                format(gString, sizeof(gString), "{4CAF50}» {FFFFFF}Você agora trabalha como: {4CAF50}%s", NomesEmpregos[listitem]);
+                SCM(playerid, COR_VERDE, gString);
+                format(gString, sizeof(gString), "{9F2B8E}» {FFFFFF}Salário: ${9F2B8E}%d {FFFFFF}por hora", SalariosEmpregos[listitem]);
+                SCM(playerid, COR_BRANCO, gString);
+                SalvarDados(playerid);
+            }
+        }
+        
+        case D_ADMIN_MENU:
+        {
+            if(!response) return 1;
+            if(PlayerInfo[playerid][Admin] < 1) return 1;
+            
+            switch(listitem)
+            {
+                case 0: // Teleportes
+                {
+                    MostrarMenuTeleportes(playerid);
+                }
+                case 1: // Gerenciar Jogadores
+                {
+                    MostrarMenuGerenciarJogadores(playerid);
+                }
+                case 2: // Veículos
+                {
+                    MostrarMenuVeiculos(playerid);
+                }
+                case 3: // Sistema
+                {
+                    MostrarMenuSistema(playerid);
+                }
+            }
+        }
+    }
+    return 1;
+}
+
+// ============== FUNÇÕES DE TEXTDRAWS MODERNOS ==============
+
+stock MostrarTelaLoginModerna(playerid)
+{
+    if(TextDrawsLoginCriados[playerid]) EsconderTextdrawsLogin(playerid);
+    
+    // Background principal com gradiente
+    LoginTD[playerid][0] = CreatePlayerTextDraw(playerid, 0.0, 0.0, "mdl-2000:gradient_bg");
+    PlayerTextDrawFont(playerid, LoginTD[playerid][0], 4);
+    PlayerTextDrawLetterSize(playerid, LoginTD[playerid][0], 0.5, 1.0);
+    PlayerTextDrawTextSize(playerid, LoginTD[playerid][0], 640.0, 480.0);
+    PlayerTextDrawColor(playerid, LoginTD[playerid][0], 0x000000CC);
+    PlayerTextDrawUseBox(playerid, LoginTD[playerid][0], 1);
+    PlayerTextDrawBoxColor(playerid, LoginTD[playerid][0], 0x0F0A1999);
+    PlayerTextDrawSetProportional(playerid, LoginTD[playerid][0], 1);
+    
+    // Container principal do login
+    LoginTD[playerid][1] = CreatePlayerTextDraw(playerid, 480.0, 150.0, "mdl-2000:login_container");
+    PlayerTextDrawFont(playerid, LoginTD[playerid][1], 4);
+    PlayerTextDrawLetterSize(playerid, LoginTD[playerid][1], 0.5, 1.0);
+    PlayerTextDrawTextSize(playerid, LoginTD[playerid][1], 150.0, 200.0);
+    PlayerTextDrawColor(playerid, LoginTD[playerid][1], 0xFFFFFFFF);
+    PlayerTextDrawUseBox(playerid, LoginTD[playerid][1], 1);
+    PlayerTextDrawBoxColor(playerid, LoginTD[playerid][1], 0x1A1A1AEE);
+    PlayerTextDrawSetProportional(playerid, LoginTD[playerid][1], 1);
+    
+    // Título "LOGIN" moderno
+    LoginTD[playerid][2] = CreatePlayerTextDraw(playerid, 555.0, 165.0, "LOGIN");
+    PlayerTextDrawAlignment(playerid, LoginTD[playerid][2], 2);
+    PlayerTextDrawBackgroundColor(playerid, LoginTD[playerid][2], 255);
+    PlayerTextDrawFont(playerid, LoginTD[playerid][2], 2);
+    PlayerTextDrawLetterSize(playerid, LoginTD[playerid][2], 0.5, 2.2);
+    PlayerTextDrawColor(playerid, LoginTD[playerid][2], COR_PRINCIPAL);
+    PlayerTextDrawSetOutline(playerid, LoginTD[playerid][2], 1);
+    PlayerTextDrawSetProportional(playerid, LoginTD[playerid][2], 1);
+    
+    // Nome do usuário
+    new nome_usuario[128];
+    format(nome_usuario, sizeof(nome_usuario), "~w~Bem-vindo, ~y~%s", GetPlayerNameEx(playerid));
+    LoginTD[playerid][3] = CreatePlayerTextDraw(playerid, 555.0, 190.0, nome_usuario);
+    PlayerTextDrawAlignment(playerid, LoginTD[playerid][3], 2);
+    PlayerTextDrawBackgroundColor(playerid, LoginTD[playerid][3], 255);
+    PlayerTextDrawFont(playerid, LoginTD[playerid][3], 1);
+    PlayerTextDrawLetterSize(playerid, LoginTD[playerid][3], 0.22, 1.0);
+    PlayerTextDrawColor(playerid, LoginTD[playerid][3], COR_BRANCO);
+    PlayerTextDrawSetOutline(playerid, LoginTD[playerid][3], 1);
+    PlayerTextDrawSetProportional(playerid, LoginTD[playerid][3], 1);
+    
+    // Label "SENHA"
+    LoginTD[playerid][4] = CreatePlayerTextDraw(playerid, 495.0, 220.0, "SENHA");
+    PlayerTextDrawBackgroundColor(playerid, LoginTD[playerid][4], 255);
+    PlayerTextDrawFont(playerid, LoginTD[playerid][4], 2);
+    PlayerTextDrawLetterSize(playerid, LoginTD[playerid][4], 0.25, 1.0);
+    PlayerTextDrawColor(playerid, LoginTD[playerid][4], COR_PRINCIPAL);
+    PlayerTextDrawSetOutline(playerid, LoginTD[playerid][4], 1);
+    PlayerTextDrawSetProportional(playerid, LoginTD[playerid][4], 1);
+    
+    // Campo de senha (clicável)
+    LoginTD[playerid][5] = CreatePlayerTextDraw(playerid, 495.0, 235.0, "LD_BEAT:chit");
+    PlayerTextDrawFont(playerid, LoginTD[playerid][5], 4);
+    PlayerTextDrawLetterSize(playerid, LoginTD[playerid][5], 0.5, 1.0);
+    PlayerTextDrawTextSize(playerid, LoginTD[playerid][5], 120.0, 18.0);
+    PlayerTextDrawColor(playerid, LoginTD[playerid][5], 0xFFFFFFFF);
+    PlayerTextDrawUseBox(playerid, LoginTD[playerid][5], 1);
+    PlayerTextDrawBoxColor(playerid, LoginTD[playerid][5], 0x2A2A2AAA);
+    PlayerTextDrawSetOutline(playerid, LoginTD[playerid][5], 1);
+    PlayerTextDrawSetProportional(playerid, LoginTD[playerid][5], 1);
+    PlayerTextDrawSetSelectable(playerid, LoginTD[playerid][5], 1);
+    
+    // Texto do campo de senha
+    LoginTD[playerid][6] = CreatePlayerTextDraw(playerid, 500.0, 237.5, "Clique para digitar");
+    PlayerTextDrawBackgroundColor(playerid, LoginTD[playerid][6], 255);
+    PlayerTextDrawFont(playerid, LoginTD[playerid][6], 1);
+    PlayerTextDrawLetterSize(playerid, LoginTD[playerid][6], 0.18, 0.9);
+    PlayerTextDrawColor(playerid, LoginTD[playerid][6], 0xCCCCCCFF);
+    PlayerTextDrawSetOutline(playerid, LoginTD[playerid][6], 1);
+    PlayerTextDrawSetProportional(playerid, LoginTD[playerid][6], 1);
+    
+    // Linha decorativa
+    LoginTD[playerid][7] = CreatePlayerTextDraw(playerid, 495.0, 258.0, "LD_BEAT:chit");
+    PlayerTextDrawFont(playerid, LoginTD[playerid][7], 4);
+    PlayerTextDrawLetterSize(playerid, LoginTD[playerid][7], 0.5, 1.0);
+    PlayerTextDrawTextSize(playerid, LoginTD[playerid][7], 120.0, 1.5);
+    PlayerTextDrawColor(playerid, LoginTD[playerid][7], COR_PRINCIPAL);
+    PlayerTextDrawUseBox(playerid, LoginTD[playerid][7], 1);
+    PlayerTextDrawBoxColor(playerid, LoginTD[playerid][7], COR_PRINCIPAL);
+    PlayerTextDrawSetProportional(playerid, LoginTD[playerid][7], 1);
+    
+    // Botão "ENTRAR" moderno
+    LoginTD[playerid][8] = CreatePlayerTextDraw(playerid, 515.0, 280.0, "LD_BEAT:chit");
+    PlayerTextDrawFont(playerid, LoginTD[playerid][8], 4);
+    PlayerTextDrawLetterSize(playerid, LoginTD[playerid][8], 0.5, 1.0);
+    PlayerTextDrawTextSize(playerid, LoginTD[playerid][8], 80.0, 25.0);
+    PlayerTextDrawColor(playerid, LoginTD[playerid][8], 0xFFFFFFFF);
+    PlayerTextDrawUseBox(playerid, LoginTD[playerid][8], 1);
+    PlayerTextDrawBoxColor(playerid, LoginTD[playerid][8], COR_PRINCIPAL);
+    PlayerTextDrawSetOutline(playerid, LoginTD[playerid][8], 0);
+    PlayerTextDrawSetProportional(playerid, LoginTD[playerid][8], 1);
+    PlayerTextDrawSetSelectable(playerid, LoginTD[playerid][8], 1);
+    
+    // Texto do botão "ENTRAR"
+    LoginTD[playerid][9] = CreatePlayerTextDraw(playerid, 555.0, 285.0, "ENTRAR");
+    PlayerTextDrawAlignment(playerid, LoginTD[playerid][9], 2);
+    PlayerTextDrawBackgroundColor(playerid, LoginTD[playerid][9], 255);
+    PlayerTextDrawFont(playerid, LoginTD[playerid][9], 2);
+    PlayerTextDrawLetterSize(playerid, LoginTD[playerid][9], 0.3, 1.3);
+    PlayerTextDrawColor(playerid, LoginTD[playerid][9], COR_BRANCO);
+    PlayerTextDrawSetOutline(playerid, LoginTD[playerid][9], 1);
+    PlayerTextDrawSetProportional(playerid, LoginTD[playerid][9], 1);
+    
+    // Informações do servidor
+    LoginTD[playerid][10] = CreatePlayerTextDraw(playerid, 555.0, 320.0, "~p~Servidor Roleplay by BACTERIA~n~~w~Versao 1.0 - Completa");
+    PlayerTextDrawAlignment(playerid, LoginTD[playerid][10], 2);
+    PlayerTextDrawBackgroundColor(playerid, LoginTD[playerid][10], 255);
+    PlayerTextDrawFont(playerid, LoginTD[playerid][10], 1);
+    PlayerTextDrawLetterSize(playerid, LoginTD[playerid][10], 0.18, 0.8);
+    PlayerTextDrawColor(playerid, LoginTD[playerid][10], COR_BRANCO);
+    PlayerTextDrawSetOutline(playerid, LoginTD[playerid][10], 1);
+    PlayerTextDrawSetProportional(playerid, LoginTD[playerid][10], 1);
+    
+    // Mostrar todos os textdraws
+    for(new i = 0; i < MAX_LOGIN_TEXTDRAWS; i++)
+    {
+        if(LoginTD[playerid][i] != INVALID_PLAYER_TEXT_DRAW)
+        {
+            PlayerTextDrawShow(playerid, LoginTD[playerid][i]);
+        }
+    }
+    
+    SelectTextDraw(playerid, COR_ACCENT);
+    TextDrawsLoginCriados[playerid] = true;
+}
+
+stock MostrarTelaRegistroModerna(playerid)
+{
+    if(TextDrawsLoginCriados[playerid]) EsconderTextdrawsLogin(playerid);
+    
+    // Background principal com gradiente
+    LoginTD[playerid][0] = CreatePlayerTextDraw(playerid, 0.0, 0.0, "mdl-2000:gradient_bg");
+    PlayerTextDrawFont(playerid, LoginTD[playerid][0], 4);
+    PlayerTextDrawLetterSize(playerid, LoginTD[playerid][0], 0.5, 1.0);
+    PlayerTextDrawTextSize(playerid, LoginTD[playerid][0], 640.0, 480.0);
+    PlayerTextDrawColor(playerid, LoginTD[playerid][0], 0x000000CC);
+    PlayerTextDrawUseBox(playerid, LoginTD[playerid][0], 1);
+    PlayerTextDrawBoxColor(playerid, LoginTD[playerid][0], 0x0F0A1999);
+    PlayerTextDrawSetProportional(playerid, LoginTD[playerid][0], 1);
+    
+    // Container principal do registro
+    LoginTD[playerid][1] = CreatePlayerTextDraw(playerid, 480.0, 150.0, "mdl-2000:register_container");
+    PlayerTextDrawFont(playerid, LoginTD[playerid][1], 4);
+    PlayerTextDrawLetterSize(playerid, LoginTD[playerid][1], 0.5, 1.0);
+    PlayerTextDrawTextSize(playerid, LoginTD[playerid][1], 150.0, 200.0);
+    PlayerTextDrawColor(playerid, LoginTD[playerid][1], 0xFFFFFFFF);
+    PlayerTextDrawUseBox(playerid, LoginTD[playerid][1], 1);
+    PlayerTextDrawBoxColor(playerid, LoginTD[playerid][1], 0x1A1A1AEE);
+    PlayerTextDrawSetProportional(playerid, LoginTD[playerid][1], 1);
+    
+    // Título "REGISTRO" moderno
+    LoginTD[playerid][2] = CreatePlayerTextDraw(playerid, 555.0, 165.0, "REGISTRO");
+    PlayerTextDrawAlignment(playerid, LoginTD[playerid][2], 2);
+    PlayerTextDrawBackgroundColor(playerid, LoginTD[playerid][2], 255);
+    PlayerTextDrawFont(playerid, LoginTD[playerid][2], 2);
+    PlayerTextDrawLetterSize(playerid, LoginTD[playerid][2], 0.5, 2.2);
+    PlayerTextDrawColor(playerid, LoginTD[playerid][2], COR_ACCENT);
+    PlayerTextDrawSetOutline(playerid, LoginTD[playerid][2], 1);
+    PlayerTextDrawSetProportional(playerid, LoginTD[playerid][2], 1);
+    
+    // Nome do usuário
+    new nome_usuario[128];
+    format(nome_usuario, sizeof(nome_usuario), "~w~Bem-vindo, ~y~%s", GetPlayerNameEx(playerid));
+    LoginTD[playerid][3] = CreatePlayerTextDraw(playerid, 555.0, 190.0, nome_usuario);
+    PlayerTextDrawAlignment(playerid, LoginTD[playerid][3], 2);
+    PlayerTextDrawBackgroundColor(playerid, LoginTD[playerid][3], 255);
+    PlayerTextDrawFont(playerid, LoginTD[playerid][3], 1);
+    PlayerTextDrawLetterSize(playerid, LoginTD[playerid][3], 0.22, 1.0);
+    PlayerTextDrawColor(playerid, LoginTD[playerid][3], COR_BRANCO);
+    PlayerTextDrawSetOutline(playerid, LoginTD[playerid][3], 1);
+    PlayerTextDrawSetProportional(playerid, LoginTD[playerid][3], 1);
+    
+    // Label "SENHA"
+    LoginTD[playerid][4] = CreatePlayerTextDraw(playerid, 495.0, 220.0, "SENHA");
+    PlayerTextDrawBackgroundColor(playerid, LoginTD[playerid][4], 255);
+    PlayerTextDrawFont(playerid, LoginTD[playerid][4], 2);
+    PlayerTextDrawLetterSize(playerid, LoginTD[playerid][4], 0.25, 1.0);
+    PlayerTextDrawColor(playerid, LoginTD[playerid][4], COR_ACCENT);
+    PlayerTextDrawSetOutline(playerid, LoginTD[playerid][4], 1);
+    PlayerTextDrawSetProportional(playerid, LoginTD[playerid][4], 1);
+    
+    // Campo de senha (clicável)
+    LoginTD[playerid][5] = CreatePlayerTextDraw(playerid, 495.0, 235.0, "LD_BEAT:chit");
+    PlayerTextDrawFont(playerid, LoginTD[playerid][5], 4);
+    PlayerTextDrawLetterSize(playerid, LoginTD[playerid][5], 0.5, 1.0);
+    PlayerTextDrawTextSize(playerid, LoginTD[playerid][5], 120.0, 18.0);
+    PlayerTextDrawColor(playerid, LoginTD[playerid][5], 0xFFFFFFFF);
+    PlayerTextDrawUseBox(playerid, LoginTD[playerid][5], 1);
+    PlayerTextDrawBoxColor(playerid, LoginTD[playerid][5], 0x2A2A2AAA);
+    PlayerTextDrawSetOutline(playerid, LoginTD[playerid][5], 1);
+    PlayerTextDrawSetProportional(playerid, LoginTD[playerid][5], 1);
+    PlayerTextDrawSetSelectable(playerid, LoginTD[playerid][5], 1);
+    
+    // Texto do campo de senha
+    LoginTD[playerid][6] = CreatePlayerTextDraw(playerid, 500.0, 237.5, "Clique para criar senha");
+    PlayerTextDrawBackgroundColor(playerid, LoginTD[playerid][6], 255);
+    PlayerTextDrawFont(playerid, LoginTD[playerid][6], 1);
+    PlayerTextDrawLetterSize(playerid, LoginTD[playerid][6], 0.18, 0.9);
+    PlayerTextDrawColor(playerid, LoginTD[playerid][6], 0xCCCCCCFF);
+    PlayerTextDrawSetOutline(playerid, LoginTD[playerid][6], 1);
+    PlayerTextDrawSetProportional(playerid, LoginTD[playerid][6], 1);
+    
+    // Linha decorativa
+    LoginTD[playerid][7] = CreatePlayerTextDraw(playerid, 495.0, 258.0, "LD_BEAT:chit");
+    PlayerTextDrawFont(playerid, LoginTD[playerid][7], 4);
+    PlayerTextDrawLetterSize(playerid, LoginTD[playerid][7], 0.5, 1.0);
+    PlayerTextDrawTextSize(playerid, LoginTD[playerid][7], 120.0, 1.5);
+    PlayerTextDrawColor(playerid, LoginTD[playerid][7], COR_ACCENT);
+    PlayerTextDrawUseBox(playerid, LoginTD[playerid][7], 1);
+    PlayerTextDrawBoxColor(playerid, LoginTD[playerid][7], COR_ACCENT);
+    PlayerTextDrawSetProportional(playerid, LoginTD[playerid][7], 1);
+    
+    // Botão "REGISTRAR" moderno
+    LoginTD[playerid][8] = CreatePlayerTextDraw(playerid, 515.0, 280.0, "LD_BEAT:chit");
+    PlayerTextDrawFont(playerid, LoginTD[playerid][8], 4);
+    PlayerTextDrawLetterSize(playerid, LoginTD[playerid][8], 0.5, 1.0);
+    PlayerTextDrawTextSize(playerid, LoginTD[playerid][8], 80.0, 25.0);
+    PlayerTextDrawColor(playerid, LoginTD[playerid][8], 0xFFFFFFFF);
+    PlayerTextDrawUseBox(playerid, LoginTD[playerid][8], 1);
+    PlayerTextDrawBoxColor(playerid, LoginTD[playerid][8], COR_ACCENT);
+    PlayerTextDrawSetOutline(playerid, LoginTD[playerid][8], 0);
+    PlayerTextDrawSetProportional(playerid, LoginTD[playerid][8], 1);
+    PlayerTextDrawSetSelectable(playerid, LoginTD[playerid][8], 1);
+    
+    // Texto do botão "REGISTRAR"
+    LoginTD[playerid][9] = CreatePlayerTextDraw(playerid, 555.0, 285.0, "REGISTRAR");
+    PlayerTextDrawAlignment(playerid, LoginTD[playerid][9], 2);
+    PlayerTextDrawBackgroundColor(playerid, LoginTD[playerid][9], 255);
+    PlayerTextDrawFont(playerid, LoginTD[playerid][9], 2);
+    PlayerTextDrawLetterSize(playerid, LoginTD[playerid][9], 0.3, 1.3);
+    PlayerTextDrawColor(playerid, LoginTD[playerid][9], COR_BRANCO);
+    PlayerTextDrawSetOutline(playerid, LoginTD[playerid][9], 1);
+    PlayerTextDrawSetProportional(playerid, LoginTD[playerid][9], 1);
+    
+    // Informações do servidor
+    LoginTD[playerid][10] = CreatePlayerTextDraw(playerid, 555.0, 320.0, "~p~Primeira vez? Crie sua conta!~n~~w~Minimo 6 caracteres na senha");
+    PlayerTextDrawAlignment(playerid, LoginTD[playerid][10], 2);
+    PlayerTextDrawBackgroundColor(playerid, LoginTD[playerid][10], 255);
+    PlayerTextDrawFont(playerid, LoginTD[playerid][10], 1);
+    PlayerTextDrawLetterSize(playerid, LoginTD[playerid][10], 0.18, 0.8);
+    PlayerTextDrawColor(playerid, LoginTD[playerid][10], COR_BRANCO);
+    PlayerTextDrawSetOutline(playerid, LoginTD[playerid][10], 1);
+    PlayerTextDrawSetProportional(playerid, LoginTD[playerid][10], 1);
+    
+    // Mostrar todos os textdraws
+    for(new i = 0; i < MAX_LOGIN_TEXTDRAWS; i++)
+    {
+        if(LoginTD[playerid][i] != INVALID_PLAYER_TEXT_DRAW)
+        {
+            PlayerTextDrawShow(playerid, LoginTD[playerid][i]);
+        }
+    }
+    
+    SelectTextDraw(playerid, COR_ACCENT);
+    TextDrawsLoginCriados[playerid] = true;
+}
+
+// ============== FUNÇÕES DO SISTEMA ==============
+
+stock CriarTextdrawsLogin(playerid)
+{
+    for(new i = 0; i < MAX_LOGIN_TEXTDRAWS; i++)
+    {
+        LoginTD[playerid][i] = INVALID_PLAYER_TEXT_DRAW;
+    }
+}
+
+stock EsconderTextdrawsLogin(playerid)
+{
+    if(!TextDrawsLoginCriados[playerid]) return;
+    
+    for(new i = 0; i < MAX_LOGIN_TEXTDRAWS; i++)
+    {
+        if(LoginTD[playerid][i] != INVALID_PLAYER_TEXT_DRAW)
+        {
+            PlayerTextDrawDestroy(playerid, LoginTD[playerid][i]);
+            LoginTD[playerid][i] = INVALID_PLAYER_TEXT_DRAW;
+        }
+    }
+    
+    CancelSelectTextDraw(playerid);
+    TextDrawsLoginCriados[playerid] = false;
+}
+
+stock DestruirTextdrawsLogin(playerid)
+{
+    if(!TextDrawsLoginCriados[playerid]) return;
+    
+    for(new i = 0; i < MAX_LOGIN_TEXTDRAWS; i++)
+    {
+        if(LoginTD[playerid][i] != INVALID_PLAYER_TEXT_DRAW)
+        {
+            PlayerTextDrawDestroy(playerid, LoginTD[playerid][i]);
+            LoginTD[playerid][i] = INVALID_PLAYER_TEXT_DRAW;
+        }
+    }
+    
+    TextDrawsLoginCriados[playerid] = false;
+}
+
+stock DestruirTextdrawsRG(playerid)
+{
+    if(!TextDrawsRGCriados[playerid]) return;
+    
+    for(new i = 0; i < MAX_RG_TEXTDRAWS; i++)
+    {
+        if(RGTD[playerid][i] != INVALID_PLAYER_TEXT_DRAW)
+        {
+            PlayerTextDrawDestroy(playerid, RGTD[playerid][i]);
+            RGTD[playerid][i] = INVALID_PLAYER_TEXT_DRAW;
+        }
+    }
+    
+    TextDrawsRGCriados[playerid] = false;
+}
+
+stock DestruirTextdrawsHUD(playerid)
+{
+    if(!TextDrawsHUDCriados[playerid]) return;
+    
+    for(new i = 0; i < MAX_HUD_TEXTDRAWS; i++)
+    {
+        if(HUDTD[playerid][i] != INVALID_PLAYER_TEXT_DRAW)
+        {
+            PlayerTextDrawDestroy(playerid, HUDTD[playerid][i]);
+            HUDTD[playerid][i] = INVALID_PLAYER_TEXT_DRAW;
+        }
+    }
+    
+    TextDrawsHUDCriados[playerid] = false;
+}
+
+// Duplicate functions removed - using static buffer versions below
+
+stock LimparChat(playerid, linhas)
+{
+    for(new i = 0; i < linhas; i++)
+    {
+        SCM(playerid, COR_BRANCO, " ");
+    }
+}
+
+stock ResetarVariaveisPlayer(playerid)
+{
+    // Reset de todas as variáveis do jogador
+    VerificarLogin[playerid] = false;
+    EstaRegistrado[playerid] = false;
+    TextDrawsLoginCriados[playerid] = false;
+    TextDrawsRGCriados[playerid] = false;
+    TextDrawsHUDCriados[playerid] = false;
+    
+    format(VSenha[playerid], 32, "");
+    format(VEmail[playerid], 64, "");
+    VGenero[playerid] = -1;
+    VIdade[playerid] = 0;
+    TentativasSenha[playerid] = 0;
+    
+    // Inicializar textdraws
+    for(new i = 0; i < MAX_LOGIN_TEXTDRAWS; i++)
+    {
+        LoginTD[playerid][i] = INVALID_PLAYER_TEXT_DRAW;
+    }
+    
+    for(new i = 0; i < MAX_RG_TEXTDRAWS; i++)
+    {
+        RGTD[playerid][i] = INVALID_PLAYER_TEXT_DRAW;
+    }
+    
+    for(new i = 0; i < MAX_HUD_TEXTDRAWS; i++)
+    {
+        HUDTD[playerid][i] = INVALID_PLAYER_TEXT_DRAW;
+    }
+    
+    // Reset anti-flood
+    UltimaMensagem[playerid] = 0;
+    MensagensEnviadas[playerid] = 0;
+    
+    // Reset dados do jogador
+    format(PlayerInfo[playerid][Senha], 32, "");
+    format(PlayerInfo[playerid][Email], 64, "");
+    PlayerInfo[playerid][Dinheiro] = 0;
+    PlayerInfo[playerid][Level] = 1;
+    PlayerInfo[playerid][Experiencia] = 0;
+    PlayerInfo[playerid][Skin] = 0;
+    PlayerInfo[playerid][Genero] = 0;
+    PlayerInfo[playerid][Admin] = 0;
+    PlayerInfo[playerid][Helper] = 0;
+    PlayerInfo[playerid][Vip] = 0;
+    PlayerInfo[playerid][Idade] = 18;
+    PlayerInfo[playerid][Altura] = 175;
+    PlayerInfo[playerid][Peso] = 70;
+    PlayerInfo[playerid][Emprego] = 0;
+    PlayerInfo[playerid][EmpregoLevel] = 1;
+    PlayerInfo[playerid][Salario] = 0;
+    PlayerInfo[playerid][UltimoPagamento] = 0;
+    format(PlayerInfo[playerid][Titulo], 64, "Cidadão Comum");
+    format(PlayerInfo[playerid][Nascimento], 32, "01/01/1990");
+    format(PlayerInfo[playerid][Nacionalidade], 32, "Brasileira");
+    format(PlayerInfo[playerid][EstadoCivil], 32, "Solteiro");
+    PlayerInfo[playerid][Interior] = 0;
+    PlayerInfo[playerid][VirtualW] = 0;
+    PlayerInfo[playerid][VidaHP] = 100.0;
+    PlayerInfo[playerid][ColeteHP] = 0.0;
+    PlayerInfo[playerid][PosX] = 1529.6;
+    PlayerInfo[playerid][PosY] = -1691.2;
+    PlayerInfo[playerid][PosZ] = 13.3;
+    PlayerInfo[playerid][PosR] = 90.0;
+    PlayerInfo[playerid][HorasJogadas] = 0;
+    PlayerInfo[playerid][MinutosJogados] = 0;
+    PlayerInfo[playerid][Mortes] = 0;
+    PlayerInfo[playerid][Kills] = 0;
+    PlayerInfo[playerid][TempoPreso] = 0;
+    PlayerInfo[playerid][TempoPrisao] = 0;
+    PlayerInfo[playerid][Crimes] = 0;
+    PlayerInfo[playerid][Multas] = 0;
+    PlayerInfo[playerid][Avisos] = 0;
+    PlayerInfo[playerid][ContaBanco] = 0;
+    format(PlayerInfo[playerid][SenhaBanco], 8, "1234");
+    PlayerInfo[playerid][CasaID] = -1;
+    PlayerInfo[playerid][CasaChave] = 0;
+    PlayerInfo[playerid][EmpresaID] = -1;
+    PlayerInfo[playerid][EmpresaDono] = 0;
+    PlayerInfo[playerid][FaccaoID] = -1;
+    PlayerInfo[playerid][FaccaoRank] = 0;
+    PlayerInfo[playerid][VeiculoSlot1] = -1;
+    PlayerInfo[playerid][VeiculoSlot2] = -1;
+    PlayerInfo[playerid][VeiculoSlot3] = -1;
+    PlayerInfo[playerid][LicencaArmas] = 0;
+    PlayerInfo[playerid][LicencaVoo] = 0;
+    PlayerInfo[playerid][LicencaBarco] = 0;
+    PlayerInfo[playerid][LicencaVeiculo] = 0;
+    PlayerInfo[playerid][Maconha] = 0;
+    PlayerInfo[playerid][Cocaina] = 0;
+    PlayerInfo[playerid][Crack] = 0;
+    PlayerInfo[playerid][ProcuradoNivel] = 0;
+    PlayerInfo[playerid][ProcuradoTempo] = 0;
+    PlayerInfo[playerid][MensagensPrivadas] = 1;
+    PlayerInfo[playerid][SomAtivado] = 1;
+    PlayerInfo[playerid][ChatGlobal] = 1;
+}
+
+stock CriarConta(playerid)
+{
+    format(arquivo, sizeof(arquivo), PASTA_CONTAS, GetPlayerNameEx(playerid));
+    
+    DOF2_CreateFile(arquivo);
+    DOF2_SetString(arquivo, "Senha", VSenha[playerid]);
+    DOF2_SetString(arquivo, "Email", "nao@definido.com");
+    DOF2_SetInt(arquivo, "Dinheiro", 2500);
+    DOF2_SetInt(arquivo, "Level", 1);
+    DOF2_SetInt(arquivo, "Experiencia", 0);
+    DOF2_SetInt(arquivo, "Skin", (VGenero[playerid] == 0) ? 26 : 56);
+    DOF2_SetInt(arquivo, "Genero", VGenero[playerid]);
+    DOF2_SetInt(arquivo, "Admin", 0);
+    DOF2_SetInt(arquivo, "Helper", 0);
+    DOF2_SetInt(arquivo, "Vip", 0);
+    DOF2_SetInt(arquivo, "Idade", VIdade[playerid]);
+    DOF2_SetInt(arquivo, "Altura", 175);
+    DOF2_SetInt(arquivo, "Peso", 70);
+    DOF2_SetInt(arquivo, "Emprego", 0);
+    DOF2_SetInt(arquivo, "EmpregoLevel", 1);
+    DOF2_SetInt(arquivo, "Salario", 0);
+    DOF2_SetInt(arquivo, "UltimoPagamento", gettime());
+    DOF2_SetString(arquivo, "Titulo", "Cidadão Comum");
+    DOF2_SetString(arquivo, "Nascimento", "01/01/1990");
+    DOF2_SetString(arquivo, "Nacionalidade", "Brasileira");
+    DOF2_SetString(arquivo, "EstadoCivil", "Solteiro");
+    DOF2_SetInt(arquivo, "Interior", 0);
+    DOF2_SetInt(arquivo, "VirtualW", 0);
+    DOF2_SetFloat(arquivo, "VidaHP", 100.0);
+    DOF2_SetFloat(arquivo, "ColeteHP", 0.0);
+    DOF2_SetFloat(arquivo, "PosX", 1529.6);
+    DOF2_SetFloat(arquivo, "PosY", -1691.2);
+    DOF2_SetFloat(arquivo, "PosZ", 13.3);
+    DOF2_SetFloat(arquivo, "PosR", 90.0);
+    DOF2_SetInt(arquivo, "HorasJogadas", 0);
+    DOF2_SetInt(arquivo, "MinutosJogados", 0);
+    DOF2_SetInt(arquivo, "Mortes", 0);
+    DOF2_SetInt(arquivo, "Kills", 0);
+    DOF2_SetInt(arquivo, "TempoPreso", 0);
+    DOF2_SetInt(arquivo, "TempoPrisao", 0);
+    DOF2_SetInt(arquivo, "Crimes", 0);
+    DOF2_SetInt(arquivo, "Multas", 0);
+    DOF2_SetInt(arquivo, "Avisos", 0);
+    DOF2_SetInt(arquivo, "ContaBanco", 1000);
+    DOF2_SetString(arquivo, "SenhaBanco", "1234");
+    DOF2_SetInt(arquivo, "CasaID", -1);
+    DOF2_SetInt(arquivo, "CasaChave", 0);
+    DOF2_SetInt(arquivo, "EmpresaID", -1);
+    DOF2_SetInt(arquivo, "EmpresaDono", 0);
+    DOF2_SetInt(arquivo, "FaccaoID", -1);
+    DOF2_SetInt(arquivo, "FaccaoRank", 0);
+    DOF2_SetInt(arquivo, "VeiculoSlot1", -1);
+    DOF2_SetInt(arquivo, "VeiculoSlot2", -1);
+    DOF2_SetInt(arquivo, "VeiculoSlot3", -1);
+    DOF2_SetInt(arquivo, "LicencaArmas", 0);
+    DOF2_SetInt(arquivo, "LicencaVoo", 0);
+    DOF2_SetInt(arquivo, "LicencaBarco", 0);
+    DOF2_SetInt(arquivo, "LicencaVeiculo", 0);
+    DOF2_SetInt(arquivo, "Maconha", 0);
+    DOF2_SetInt(arquivo, "Cocaina", 0);
+    DOF2_SetInt(arquivo, "Crack", 0);
+    DOF2_SetInt(arquivo, "ProcuradoNivel", 0);
+    DOF2_SetInt(arquivo, "ProcuradoTempo", 0);
+    DOF2_SetInt(arquivo, "MensagensPrivadas", 1);
+    DOF2_SetInt(arquivo, "SomAtivado", 1);
+    DOF2_SetInt(arquivo, "ChatGlobal", 1);
+    
+    EstaRegistrado[playerid] = true;
+    CarregarDadosPlayer(playerid);
+    
+    format(gString, sizeof(gString), "{4CAF50}» {FFFFFF}Conta criada com sucesso! Bem-vindo ao servidor, {4CAF50}%s{FFFFFF}!", GetPlayerNameEx(playerid));
+    SCM(playerid, COR_VERDE, gString);
+    SCM(playerid, COR_BRANCO, "{9F2B8E}» {FFFFFF}Você recebeu ${9F2B8E}$2.500 {FFFFFF}de dinheiro inicial e ${9F2B8E}$1.000 {FFFFFF}na conta bancária!");
+    SCM(playerid, COR_BRANCO, "{9F2B8E}» {FFFFFF}Use {9F2B8E}/ajuda {FFFFFF}para ver todos os comandos disponíveis.");
+    
+    printf("[REGISTER] Nova conta criada: %s | Idade: %d | Genero: %s", GetPlayerNameEx(playerid), VIdade[playerid], (VGenero[playerid] == 0) ? "Masculino" : "Feminino");
+}
+
+stock CarregarDadosPlayer(playerid)
+{
+    format(arquivo, sizeof(arquivo), PASTA_CONTAS, GetPlayerNameEx(playerid));
+    
+    if(!DOF2_FileExists(arquivo)) return;
+    
+    // Carregar dados básicos
+    DOF2_GetString(arquivo, "Senha", PlayerInfo[playerid][Senha], 32);
+    DOF2_GetString(arquivo, "Email", PlayerInfo[playerid][Email], 64);
+    PlayerInfo[playerid][Dinheiro] = DOF2_GetInt(arquivo, "Dinheiro");
+    PlayerInfo[playerid][Level] = DOF2_GetInt(arquivo, "Level");
+    PlayerInfo[playerid][Experiencia] = DOF2_GetInt(arquivo, "Experiencia");
+    PlayerInfo[playerid][Skin] = DOF2_GetInt(arquivo, "Skin");
+    PlayerInfo[playerid][Genero] = DOF2_GetInt(arquivo, "Genero");
+    PlayerInfo[playerid][Admin] = DOF2_GetInt(arquivo, "Admin");
+    PlayerInfo[playerid][Helper] = DOF2_GetInt(arquivo, "Helper");
+    PlayerInfo[playerid][Vip] = DOF2_GetInt(arquivo, "Vip");
+    
+    // Carregar informações pessoais
+    PlayerInfo[playerid][Idade] = DOF2_GetInt(arquivo, "Idade");
+    PlayerInfo[playerid][Altura] = DOF2_GetInt(arquivo, "Altura");
+    PlayerInfo[playerid][Peso] = DOF2_GetInt(arquivo, "Peso");
+    PlayerInfo[playerid][Emprego] = DOF2_GetInt(arquivo, "Emprego");
+    PlayerInfo[playerid][EmpregoLevel] = DOF2_GetInt(arquivo, "EmpregoLevel");
+    PlayerInfo[playerid][Salario] = DOF2_GetInt(arquivo, "Salario");
+    PlayerInfo[playerid][UltimoPagamento] = DOF2_GetInt(arquivo, "UltimoPagamento");
+    DOF2_GetString(arquivo, "Titulo", PlayerInfo[playerid][Titulo], 64);
+    DOF2_GetString(arquivo, "Nascimento", PlayerInfo[playerid][Nascimento], 32);
+    DOF2_GetString(arquivo, "Nacionalidade", PlayerInfo[playerid][Nacionalidade], 32);
+    DOF2_GetString(arquivo, "EstadoCivil", PlayerInfo[playerid][EstadoCivil], 32);
+    
+    // Carregar localização
+    PlayerInfo[playerid][Interior] = DOF2_GetInt(arquivo, "Interior");
+    PlayerInfo[playerid][VirtualW] = DOF2_GetInt(arquivo, "VirtualW");
+    PlayerInfo[playerid][VidaHP] = DOF2_GetFloat(arquivo, "VidaHP");
+    PlayerInfo[playerid][ColeteHP] = DOF2_GetFloat(arquivo, "ColeteHP");
+    PlayerInfo[playerid][PosX] = DOF2_GetFloat(arquivo, "PosX");
+    PlayerInfo[playerid][PosY] = DOF2_GetFloat(arquivo, "PosY");
+    PlayerInfo[playerid][PosZ] = DOF2_GetFloat(arquivo, "PosZ");
+    PlayerInfo[playerid][PosR] = DOF2_GetFloat(arquivo, "PosR");
+    
+    // Carregar estatísticas
+    PlayerInfo[playerid][HorasJogadas] = DOF2_GetInt(arquivo, "HorasJogadas");
+    PlayerInfo[playerid][MinutosJogados] = DOF2_GetInt(arquivo, "MinutosJogados");
+    PlayerInfo[playerid][Mortes] = DOF2_GetInt(arquivo, "Mortes");
+    PlayerInfo[playerid][Kills] = DOF2_GetInt(arquivo, "Kills");
+    PlayerInfo[playerid][TempoPreso] = DOF2_GetInt(arquivo, "TempoPreso");
+    PlayerInfo[playerid][TempoPrisao] = DOF2_GetInt(arquivo, "TempoPrisao");
+    PlayerInfo[playerid][Crimes] = DOF2_GetInt(arquivo, "Crimes");
+    PlayerInfo[playerid][Multas] = DOF2_GetInt(arquivo, "Multas");
+    PlayerInfo[playerid][Avisos] = DOF2_GetInt(arquivo, "Avisos");
+    
+    // Carregar sistema bancário
+    PlayerInfo[playerid][ContaBanco] = DOF2_GetInt(arquivo, "ContaBanco");
+    DOF2_GetString(arquivo, "SenhaBanco", PlayerInfo[playerid][SenhaBanco], 8);
+    
+    // Carregar propriedades
+    PlayerInfo[playerid][CasaID] = DOF2_GetInt(arquivo, "CasaID");
+    PlayerInfo[playerid][CasaChave] = DOF2_GetInt(arquivo, "CasaChave");
+    PlayerInfo[playerid][EmpresaID] = DOF2_GetInt(arquivo, "EmpresaID");
+    PlayerInfo[playerid][EmpresaDono] = DOF2_GetInt(arquivo, "EmpresaDono");
+    
+    // Carregar facção
+    PlayerInfo[playerid][FaccaoID] = DOF2_GetInt(arquivo, "FaccaoID");
+    PlayerInfo[playerid][FaccaoRank] = DOF2_GetInt(arquivo, "FaccaoRank");
+    
+    // Carregar veículos
+    PlayerInfo[playerid][VeiculoSlot1] = DOF2_GetInt(arquivo, "VeiculoSlot1");
+    PlayerInfo[playerid][VeiculoSlot2] = DOF2_GetInt(arquivo, "VeiculoSlot2");
+    PlayerInfo[playerid][VeiculoSlot3] = DOF2_GetInt(arquivo, "VeiculoSlot3");
+    
+    // Carregar licenças
+    PlayerInfo[playerid][LicencaArmas] = DOF2_GetInt(arquivo, "LicencaArmas");
+    PlayerInfo[playerid][LicencaVoo] = DOF2_GetInt(arquivo, "LicencaVoo");
+    PlayerInfo[playerid][LicencaBarco] = DOF2_GetInt(arquivo, "LicencaBarco");
+    PlayerInfo[playerid][LicencaVeiculo] = DOF2_GetInt(arquivo, "LicencaVeiculo");
+    
+    // Carregar drogas/crime
+    PlayerInfo[playerid][Maconha] = DOF2_GetInt(arquivo, "Maconha");
+    PlayerInfo[playerid][Cocaina] = DOF2_GetInt(arquivo, "Cocaina");
+    PlayerInfo[playerid][Crack] = DOF2_GetInt(arquivo, "Crack");
+    PlayerInfo[playerid][ProcuradoNivel] = DOF2_GetInt(arquivo, "ProcuradoNivel");
+    PlayerInfo[playerid][ProcuradoTempo] = DOF2_GetInt(arquivo, "ProcuradoTempo");
+    
+    // Carregar configurações
+    PlayerInfo[playerid][MensagensPrivadas] = DOF2_GetInt(arquivo, "MensagensPrivadas");
+    PlayerInfo[playerid][SomAtivado] = DOF2_GetInt(arquivo, "SomAtivado");
+    PlayerInfo[playerid][ChatGlobal] = DOF2_GetInt(arquivo, "ChatGlobal");
+    
+    // Finalizar login
+    VerificarLogin[playerid] = true;
+    
+    // Spawnar jogador
+    SpawnPlayer(playerid);
+    
+    printf("[LOGIN] %s logou no servidor.", GetPlayerNameEx(playerid));
+}
+
+stock SalvarDados(playerid)
+{
+    if(!VerificarLogin[playerid]) return;
+    
+    format(arquivo, sizeof(arquivo), PASTA_CONTAS, GetPlayerNameEx(playerid));
+    
+    // Atualizar posição atual
+    GetPlayerPos(playerid, PlayerInfo[playerid][PosX], PlayerInfo[playerid][PosY], PlayerInfo[playerid][PosZ]);
+    GetPlayerFacingAngle(playerid, PlayerInfo[playerid][PosR]);
+    GetPlayerHealth(playerid, PlayerInfo[playerid][VidaHP]);
+    GetPlayerArmour(playerid, PlayerInfo[playerid][ColeteHP]);
+    PlayerInfo[playerid][Interior] = GetPlayerInterior(playerid);
+    PlayerInfo[playerid][VirtualW] = GetPlayerVirtualWorld(playerid);
+    PlayerInfo[playerid][Dinheiro] = GetPlayerMoney(playerid);
+    
+    // Salvar dados básicos
+    DOF2_SetString(arquivo, "Senha", PlayerInfo[playerid][Senha]);
+    DOF2_SetString(arquivo, "Email", PlayerInfo[playerid][Email]);
+    DOF2_SetInt(arquivo, "Dinheiro", PlayerInfo[playerid][Dinheiro]);
+    DOF2_SetInt(arquivo, "Level", PlayerInfo[playerid][Level]);
+    DOF2_SetInt(arquivo, "Experiencia", PlayerInfo[playerid][Experiencia]);
+    DOF2_SetInt(arquivo, "Skin", PlayerInfo[playerid][Skin]);
+    DOF2_SetInt(arquivo, "Genero", PlayerInfo[playerid][Genero]);
+    DOF2_SetInt(arquivo, "Admin", PlayerInfo[playerid][Admin]);
+    DOF2_SetInt(arquivo, "Helper", PlayerInfo[playerid][Helper]);
+    DOF2_SetInt(arquivo, "Vip", PlayerInfo[playerid][Vip]);
+    
+    // Salvar informações pessoais
+    DOF2_SetInt(arquivo, "Idade", PlayerInfo[playerid][Idade]);
+    DOF2_SetInt(arquivo, "Altura", PlayerInfo[playerid][Altura]);
+    DOF2_SetInt(arquivo, "Peso", PlayerInfo[playerid][Peso]);
+    DOF2_SetInt(arquivo, "Emprego", PlayerInfo[playerid][Emprego]);
+    DOF2_SetInt(arquivo, "EmpregoLevel", PlayerInfo[playerid][EmpregoLevel]);
+    DOF2_SetInt(arquivo, "Salario", PlayerInfo[playerid][Salario]);
+    DOF2_SetInt(arquivo, "UltimoPagamento", PlayerInfo[playerid][UltimoPagamento]);
+    DOF2_SetString(arquivo, "Titulo", PlayerInfo[playerid][Titulo]);
+    DOF2_SetString(arquivo, "Nascimento", PlayerInfo[playerid][Nascimento]);
+    DOF2_SetString(arquivo, "Nacionalidade", PlayerInfo[playerid][Nacionalidade]);
+    DOF2_SetString(arquivo, "EstadoCivil", PlayerInfo[playerid][EstadoCivil]);
+    
+    // Salvar localização
+    DOF2_SetInt(arquivo, "Interior", PlayerInfo[playerid][Interior]);
+    DOF2_SetInt(arquivo, "VirtualW", PlayerInfo[playerid][VirtualW]);
+    DOF2_SetFloat(arquivo, "VidaHP", PlayerInfo[playerid][VidaHP]);
+    DOF2_SetFloat(arquivo, "ColeteHP", PlayerInfo[playerid][ColeteHP]);
+    DOF2_SetFloat(arquivo, "PosX", PlayerInfo[playerid][PosX]);
+    DOF2_SetFloat(arquivo, "PosY", PlayerInfo[playerid][PosY]);
+    DOF2_SetFloat(arquivo, "PosZ", PlayerInfo[playerid][PosZ]);
+    DOF2_SetFloat(arquivo, "PosR", PlayerInfo[playerid][PosR]);
+    
+    // Salvar estatísticas
+    DOF2_SetInt(arquivo, "HorasJogadas", PlayerInfo[playerid][HorasJogadas]);
+    DOF2_SetInt(arquivo, "MinutosJogados", PlayerInfo[playerid][MinutosJogados]);
+    DOF2_SetInt(arquivo, "Mortes", PlayerInfo[playerid][Mortes]);
+    DOF2_SetInt(arquivo, "Kills", PlayerInfo[playerid][Kills]);
+    DOF2_SetInt(arquivo, "TempoPreso", PlayerInfo[playerid][TempoPreso]);
+    DOF2_SetInt(arquivo, "TempoPrisao", PlayerInfo[playerid][TempoPrisao]);
+    DOF2_SetInt(arquivo, "Crimes", PlayerInfo[playerid][Crimes]);
+    DOF2_SetInt(arquivo, "Multas", PlayerInfo[playerid][Multas]);
+    DOF2_SetInt(arquivo, "Avisos", PlayerInfo[playerid][Avisos]);
+    
+    // Salvar sistema bancário
+    DOF2_SetInt(arquivo, "ContaBanco", PlayerInfo[playerid][ContaBanco]);
+    DOF2_SetString(arquivo, "SenhaBanco", PlayerInfo[playerid][SenhaBanco]);
+    
+    // Salvar propriedades
+    DOF2_SetInt(arquivo, "CasaID", PlayerInfo[playerid][CasaID]);
+    DOF2_SetInt(arquivo, "CasaChave", PlayerInfo[playerid][CasaChave]);
+    DOF2_SetInt(arquivo, "EmpresaID", PlayerInfo[playerid][EmpresaID]);
+    DOF2_SetInt(arquivo, "EmpresaDono", PlayerInfo[playerid][EmpresaDono]);
+    
+    // Salvar facção
+    DOF2_SetInt(arquivo, "FaccaoID", PlayerInfo[playerid][FaccaoID]);
+    DOF2_SetInt(arquivo, "FaccaoRank", PlayerInfo[playerid][FaccaoRank]);
+    
+    // Salvar veículos
+    DOF2_SetInt(arquivo, "VeiculoSlot1", PlayerInfo[playerid][VeiculoSlot1]);
+    DOF2_SetInt(arquivo, "VeiculoSlot2", PlayerInfo[playerid][VeiculoSlot2]);
+    DOF2_SetInt(arquivo, "VeiculoSlot3", PlayerInfo[playerid][VeiculoSlot3]);
+    
+    // Salvar licenças
+    DOF2_SetInt(arquivo, "LicencaArmas", PlayerInfo[playerid][LicencaArmas]);
+    DOF2_SetInt(arquivo, "LicencaVoo", PlayerInfo[playerid][LicencaVoo]);
+    DOF2_SetInt(arquivo, "LicencaBarco", PlayerInfo[playerid][LicencaBarco]);
+    DOF2_SetInt(arquivo, "LicencaVeiculo", PlayerInfo[playerid][LicencaVeiculo]);
+    
+    // Salvar drogas/crime
+    DOF2_SetInt(arquivo, "Maconha", PlayerInfo[playerid][Maconha]);
+    DOF2_SetInt(arquivo, "Cocaina", PlayerInfo[playerid][Cocaina]);
+    DOF2_SetInt(arquivo, "Crack", PlayerInfo[playerid][Crack]);
+    DOF2_SetInt(arquivo, "ProcuradoNivel", PlayerInfo[playerid][ProcuradoNivel]);
+    DOF2_SetInt(arquivo, "ProcuradoTempo", PlayerInfo[playerid][ProcuradoTempo]);
+    
+    // Salvar configurações
+    DOF2_SetInt(arquivo, "MensagensPrivadas", PlayerInfo[playerid][MensagensPrivadas]);
+    DOF2_SetInt(arquivo, "SomAtivado", PlayerInfo[playerid][SomAtivado]);
+    DOF2_SetInt(arquivo, "ChatGlobal", PlayerInfo[playerid][ChatGlobal]);
+}
+
+// ============== SISTEMA DE LOADING SCREEN ==============
+
+new PlayerText:LoadingTD[MAX_PLAYERS][20];
+new bool:LoadingAtivo[MAX_PLAYERS];
+new LoadingProgresso[MAX_PLAYERS];
+
+stock MostrarTelaCarregamento(playerid)
+{
+    LoadingAtivo[playerid] = true;
+    LoadingProgresso[playerid] = 0;
+    
+    // Background principal da tela de loading
+    LoadingTD[playerid][0] = CreatePlayerTextDraw(playerid, 0.0, 0.0, "mdl-2000:loading_bg");
+    PlayerTextDrawFont(playerid, LoadingTD[playerid][0], 4);
+    PlayerTextDrawLetterSize(playerid, LoadingTD[playerid][0], 0.5, 1.0);
+    PlayerTextDrawTextSize(playerid, LoadingTD[playerid][0], 640.0, 480.0);
+    PlayerTextDrawColor(playerid, LoadingTD[playerid][0], 0xFFFFFFFF);
+    PlayerTextDrawUseBox(playerid, LoadingTD[playerid][0], 1);
+    PlayerTextDrawBoxColor(playerid, LoadingTD[playerid][0], 0x0A0A0AFF);
+    PlayerTextDrawSetProportional(playerid, LoadingTD[playerid][0], 1);
+    
+    // Logo do servidor - Grande e centralizado
+    LoadingTD[playerid][1] = CreatePlayerTextDraw(playerid, 320.0, 120.0, "~p~ROLEPLAY~n~~w~by ~y~BACTERIA");
+    PlayerTextDrawAlignment(playerid, LoadingTD[playerid][1], 2);
+    PlayerTextDrawBackgroundColor(playerid, LoadingTD[playerid][1], 255);
+    PlayerTextDrawFont(playerid, LoadingTD[playerid][1], 0);
+    PlayerTextDrawLetterSize(playerid, LoadingTD[playerid][1], 0.8, 3.2);
+    PlayerTextDrawColor(playerid, LoadingTD[playerid][1], COR_BRANCO);
+    PlayerTextDrawSetOutline(playerid, LoadingTD[playerid][1], 2);
+    PlayerTextDrawSetProportional(playerid, LoadingTD[playerid][1], 1);
+    PlayerTextDrawSetShadow(playerid, LoadingTD[playerid][1], 2);
+    
+    // Versão do servidor
+    LoadingTD[playerid][2] = CreatePlayerTextDraw(playerid, 320.0, 200.0, "~w~Versao 1.0 - Completa | Feito com ~r~♥");
+    PlayerTextDrawAlignment(playerid, LoadingTD[playerid][2], 2);
+    PlayerTextDrawBackgroundColor(playerid, LoadingTD[playerid][2], 255);
+    PlayerTextDrawFont(playerid, LoadingTD[playerid][2], 1);
+    PlayerTextDrawLetterSize(playerid, LoadingTD[playerid][2], 0.25, 1.2);
+    PlayerTextDrawColor(playerid, LoadingTD[playerid][2], COR_CINZA);
+    PlayerTextDrawSetOutline(playerid, LoadingTD[playerid][2], 1);
+    PlayerTextDrawSetProportional(playerid, LoadingTD[playerid][2], 1);
+    
+    // Barra de loading - Container
+    LoadingTD[playerid][3] = CreatePlayerTextDraw(playerid, 220.0, 300.0, "LD_BEAT:chit");
+    PlayerTextDrawFont(playerid, LoadingTD[playerid][3], 4);
+    PlayerTextDrawLetterSize(playerid, LoadingTD[playerid][3], 0.5, 1.0);
+    PlayerTextDrawTextSize(playerid, LoadingTD[playerid][3], 200.0, 20.0);
+    PlayerTextDrawColor(playerid, LoadingTD[playerid][3], 0xFFFFFFFF);
+    PlayerTextDrawUseBox(playerid, LoadingTD[playerid][3], 1);
+    PlayerTextDrawBoxColor(playerid, LoadingTD[playerid][3], 0x2A2A2AAA);
+    PlayerTextDrawSetOutline(playerid, LoadingTD[playerid][3], 1);
+    PlayerTextDrawSetProportional(playerid, LoadingTD[playerid][3], 1);
+    
+    // Barra de loading - Progresso
+    LoadingTD[playerid][4] = CreatePlayerTextDraw(playerid, 222.0, 302.0, "LD_BEAT:chit");
+    PlayerTextDrawFont(playerid, LoadingTD[playerid][4], 4);
+    PlayerTextDrawLetterSize(playerid, LoadingTD[playerid][4], 0.5, 1.0);
+    PlayerTextDrawTextSize(playerid, LoadingTD[playerid][4], 0.0, 16.0);
+    PlayerTextDrawColor(playerid, LoadingTD[playerid][4], 0xFFFFFFFF);
+    PlayerTextDrawUseBox(playerid, LoadingTD[playerid][4], 1);
+    PlayerTextDrawBoxColor(playerid, LoadingTD[playerid][4], COR_PRINCIPAL);
+    PlayerTextDrawSetProportional(playerid, LoadingTD[playerid][4], 1);
+    
+    // Texto "Carregando..."
+    LoadingTD[playerid][5] = CreatePlayerTextDraw(playerid, 320.0, 270.0, "Carregando...");
+    PlayerTextDrawAlignment(playerid, LoadingTD[playerid][5], 2);
+    PlayerTextDrawBackgroundColor(playerid, LoadingTD[playerid][5], 255);
+    PlayerTextDrawFont(playerid, LoadingTD[playerid][5], 2);
+    PlayerTextDrawLetterSize(playerid, LoadingTD[playerid][5], 0.3, 1.5);
+    PlayerTextDrawColor(playerid, LoadingTD[playerid][5], COR_PRINCIPAL);
+    PlayerTextDrawSetOutline(playerid, LoadingTD[playerid][5], 1);
+    PlayerTextDrawSetProportional(playerid, LoadingTD[playerid][5], 1);
+    
+    // Porcentagem de loading
+    LoadingTD[playerid][6] = CreatePlayerTextDraw(playerid, 320.0, 330.0, "0%");
+    PlayerTextDrawAlignment(playerid, LoadingTD[playerid][6], 2);
+    PlayerTextDrawBackgroundColor(playerid, LoadingTD[playerid][6], 255);
+    PlayerTextDrawFont(playerid, LoadingTD[playerid][6], 2);
+    PlayerTextDrawLetterSize(playerid, LoadingTD[playerid][6], 0.4, 1.8);
+    PlayerTextDrawColor(playerid, LoadingTD[playerid][6], COR_ACCENT);
+    PlayerTextDrawSetOutline(playerid, LoadingTD[playerid][6], 1);
+    PlayerTextDrawSetProportional(playerid, LoadingTD[playerid][6], 1);
+    
+    // Mensagem de loading atual
+    LoadingTD[playerid][7] = CreatePlayerTextDraw(playerid, 320.0, 350.0, "Inicializando servidor...");
+    PlayerTextDrawAlignment(playerid, LoadingTD[playerid][7], 2);
+    PlayerTextDrawBackgroundColor(playerid, LoadingTD[playerid][7], 255);
+    PlayerTextDrawFont(playerid, LoadingTD[playerid][7], 1);
+    PlayerTextDrawLetterSize(playerid, LoadingTD[playerid][7], 0.22, 1.0);
+    PlayerTextDrawColor(playerid, LoadingTD[playerid][7], COR_BRANCO);
+    PlayerTextDrawSetOutline(playerid, LoadingTD[playerid][7], 1);
+    PlayerTextDrawSetProportional(playerid, LoadingTD[playerid][7], 1);
+    
+    // Informações do servidor - Lado esquerdo
+    LoadingTD[playerid][8] = CreatePlayerTextDraw(playerid, 50.0, 390.0, "~y~INFORMACOES DO SERVIDOR:~n~~w~• Casas: 200 disponiveis~n~• Empresas: 50 disponiveis~n~• Faccoes: 10 ativas~n~• Veiculos: 100+ modelos");
+    PlayerTextDrawBackgroundColor(playerid, LoadingTD[playerid][8], 255);
+    PlayerTextDrawFont(playerid, LoadingTD[playerid][8], 1);
+    PlayerTextDrawLetterSize(playerid, LoadingTD[playerid][8], 0.18, 0.8);
+    PlayerTextDrawColor(playerid, LoadingTD[playerid][8], COR_BRANCO);
+    PlayerTextDrawSetOutline(playerid, LoadingTD[playerid][8], 1);
+    PlayerTextDrawSetProportional(playerid, LoadingTD[playerid][8], 1);
+    
+    // Comandos básicos - Lado direito
+    LoadingTD[playerid][9] = CreatePlayerTextDraw(playerid, 400.0, 390.0, "~y~COMANDOS BASICOS:~n~~w~/ajuda - Lista de comandos~n~/rg - Seu documento~n~/banco - Sistema bancario~n~/trabalhar - Conseguir emprego");
+    PlayerTextDrawBackgroundColor(playerid, LoadingTD[playerid][9], 255);
+    PlayerTextDrawFont(playerid, LoadingTD[playerid][9], 1);
+    PlayerTextDrawLetterSize(playerid, LoadingTD[playerid][9], 0.18, 0.8);
+    PlayerTextDrawColor(playerid, LoadingTD[playerid][9], COR_BRANCO);
+    PlayerTextDrawSetOutline(playerid, LoadingTD[playerid][9], 1);
+    PlayerTextDrawSetProportional(playerid, LoadingTD[playerid][9], 1);
+    
+    // Mostrar todos os textdraws de loading
+    for(new i = 0; i < 10; i++)
+    {
+        PlayerTextDrawShow(playerid, LoadingTD[playerid][i]);
+    }
+    
+    // Iniciar processo de loading
+    SetTimerEx("AtualizarLoading", 500, false, "i", playerid);
+}
+
+forward AtualizarLoading(playerid);
+public AtualizarLoading(playerid)
+{
+    if(!LoadingAtivo[playerid]) return;
+    
+    LoadingProgresso[playerid] += random(15) + 5;
+    if(LoadingProgresso[playerid] > 100) LoadingProgresso[playerid] = 100;
+    
+    // Atualizar barra de progresso
+    new Float:largura = (LoadingProgresso[playerid] * 196.0) / 100.0;
+    PlayerTextDrawTextSize(playerid, LoadingTD[playerid][4], largura, 16.0);
+    PlayerTextDrawShow(playerid, LoadingTD[playerid][4]);
+    
+    // Atualizar porcentagem
+    new porcentagem_str[16];
+    format(porcentagem_str, sizeof(porcentagem_str), "%d%%", LoadingProgresso[playerid]);
+    PlayerTextDrawSetString(playerid, LoadingTD[playerid][6], porcentagem_str);
+    
+    // Atualizar mensagem baseada no progresso
+    new mensagem[64];
+    if(LoadingProgresso[playerid] < 20)
+        mensagem = "Conectando ao servidor...";
+    else if(LoadingProgresso[playerid] < 40)
+        mensagem = "Carregando sistemas...";
+    else if(LoadingProgresso[playerid] < 60)
+        mensagem = "Verificando dados...";
+    else if(LoadingProgresso[playerid] < 80)
+        mensagem = "Preparando ambiente...";
+    else if(LoadingProgresso[playerid] < 95)
+        mensagem = "Finalizando carregamento...";
+    else
+        mensagem = "Pronto para jogar!";
+    
+    PlayerTextDrawSetString(playerid, LoadingTD[playerid][7], mensagem);
+    
+    if(LoadingProgresso[playerid] >= 100)
+    {
+        // Loading completo - esconder tela
+        SetTimerEx("EsconderTelaCarregamento", 1000, false, "i", playerid);
+    }
+    else
+    {
+        // Continuar loading
+        SetTimerEx("AtualizarLoading", random(800) + 200, false, "i", playerid);
+    }
+}
+
+forward EsconderTelaCarregamento(playerid);
+public EsconderTelaCarregamento(playerid)
+{
+    LoadingAtivo[playerid] = false;
+    
+    for(new i = 0; i < 20; i++)
+    {
+        if(LoadingTD[playerid][i] != INVALID_PLAYER_TEXT_DRAW)
+        {
+            PlayerTextDrawDestroy(playerid, LoadingTD[playerid][i]);
+            LoadingTD[playerid][i] = INVALID_PLAYER_TEXT_DRAW;
+        }
+    }
+    
+    // Mostrar tela de login/registro
+    if(!EstaRegistrado[playerid])
+        MostrarTelaRegistroModerna(playerid);
+    else
+        MostrarTelaLoginModerna(playerid);
+}
+
+// ============== SISTEMA DE HUD MODERNO ==============
+
+stock CriarHUDModerno(playerid)
+{
+    if(TextDrawsHUDCriados[playerid]) DestruirTextdrawsHUD(playerid);
+    
+    // Container principal do HUD
+    HUDTD[playerid][0] = CreatePlayerTextDraw(playerid, 10.0, 430.0, "LD_BEAT:chit");
+    PlayerTextDrawFont(playerid, HUDTD[playerid][0], 4);
+    PlayerTextDrawLetterSize(playerid, HUDTD[playerid][0], 0.5, 1.0);
+    PlayerTextDrawTextSize(playerid, HUDTD[playerid][0], 200.0, 40.0);
+    PlayerTextDrawColor(playerid, HUDTD[playerid][0], 0xFFFFFFFF);
+    PlayerTextDrawUseBox(playerid, HUDTD[playerid][0], 1);
+    PlayerTextDrawBoxColor(playerid, HUDTD[playerid][0], 0x000000AA);
+    PlayerTextDrawSetProportional(playerid, HUDTD[playerid][0], 1);
+    
+    // Nome do jogador
+    new string_hud[128];
+    format(string_hud, sizeof(string_hud), "~w~%s ~y~[ID:%d]", GetPlayerNameEx(playerid), playerid);
+    HUDTD[playerid][1] = CreatePlayerTextDraw(playerid, 15.0, 433.0, string_hud);
+    PlayerTextDrawBackgroundColor(playerid, HUDTD[playerid][1], 255);
+    PlayerTextDrawFont(playerid, HUDTD[playerid][1], 1);
+    PlayerTextDrawLetterSize(playerid, HUDTD[playerid][1], 0.20, 0.9);
+    PlayerTextDrawColor(playerid, HUDTD[playerid][1], COR_BRANCO);
+    PlayerTextDrawSetOutline(playerid, HUDTD[playerid][1], 1);
+    PlayerTextDrawSetProportional(playerid, HUDTD[playerid][1], 1);
+    
+    // Nível e dinheiro
+    format(string_hud, sizeof(string_hud), "~g~Level: ~w~%d ~y~| Dinheiro: ~g~$%d", PlayerInfo[playerid][Level], GetPlayerMoney(playerid));
+    HUDTD[playerid][2] = CreatePlayerTextDraw(playerid, 15.0, 445.0, string_hud);
+    PlayerTextDrawBackgroundColor(playerid, HUDTD[playerid][2], 255);
+    PlayerTextDrawFont(playerid, HUDTD[playerid][2], 1);
+    PlayerTextDrawLetterSize(playerid, HUDTD[playerid][2], 0.18, 0.8);
+    PlayerTextDrawColor(playerid, HUDTD[playerid][2], COR_BRANCO);
+    PlayerTextDrawSetOutline(playerid, HUDTD[playerid][2], 1);
+    PlayerTextDrawSetProportional(playerid, HUDTD[playerid][2], 1);
+    
+    // Emprego e título
+    format(string_hud, sizeof(string_hud), "~p~%s ~w~| ~y~%s", NomesEmpregos[PlayerInfo[playerid][Emprego]], PlayerInfo[playerid][Titulo]);
+    HUDTD[playerid][3] = CreatePlayerTextDraw(playerid, 15.0, 457.0, string_hud);
+    PlayerTextDrawBackgroundColor(playerid, HUDTD[playerid][3], 255);
+    PlayerTextDrawFont(playerid, HUDTD[playerid][3], 1);
+    PlayerTextDrawLetterSize(playerid, HUDTD[playerid][3], 0.18, 0.8);
+    PlayerTextDrawColor(playerid, HUDTD[playerid][3], COR_BRANCO);
+    PlayerTextDrawSetOutline(playerid, HUDTD[playerid][3], 1);
+    PlayerTextDrawSetProportional(playerid, HUDTD[playerid][3], 1);
+    
+    // Relógio do servidor - Canto superior direito
+    HUDTD[playerid][4] = CreatePlayerTextDraw(playerid, 550.0, 20.0, "LD_BEAT:chit");
+    PlayerTextDrawFont(playerid, HUDTD[playerid][4], 4);
+    PlayerTextDrawLetterSize(playerid, HUDTD[playerid][4], 0.5, 1.0);
+    PlayerTextDrawTextSize(playerid, HUDTD[playerid][4], 80.0, 25.0);
+    PlayerTextDrawColor(playerid, HUDTD[playerid][4], 0xFFFFFFFF);
+    PlayerTextDrawUseBox(playerid, HUDTD[playerid][4], 1);
+    PlayerTextDrawBoxColor(playerid, HUDTD[playerid][4], 0x000000AA);
+    PlayerTextDrawSetProportional(playerid, HUDTD[playerid][4], 1);
+    
+    format(string_hud, sizeof(string_hud), "~w~%02d:%02d", ServerHora, ServerMinuto);
+    HUDTD[playerid][5] = CreatePlayerTextDraw(playerid, 590.0, 27.0, string_hud);
+    PlayerTextDrawAlignment(playerid, HUDTD[playerid][5], 2);
+    PlayerTextDrawBackgroundColor(playerid, HUDTD[playerid][5], 255);
+    PlayerTextDrawFont(playerid, HUDTD[playerid][5], 2);
+    PlayerTextDrawLetterSize(playerid, HUDTD[playerid][5], 0.3, 1.3);
+    PlayerTextDrawColor(playerid, HUDTD[playerid][5], COR_PRINCIPAL);
+    PlayerTextDrawSetOutline(playerid, HUDTD[playerid][5], 1);
+    PlayerTextDrawSetProportional(playerid, HUDTD[playerid][5], 1);
+    
+    // Velocímetro (se estiver em veículo)
+    HUDTD[playerid][6] = CreatePlayerTextDraw(playerid, 450.0, 380.0, "LD_BEAT:chit");
+    PlayerTextDrawFont(playerid, HUDTD[playerid][6], 4);
+    PlayerTextDrawLetterSize(playerid, HUDTD[playerid][6], 0.5, 1.0);
+    PlayerTextDrawTextSize(playerid, HUDTD[playerid][6], 120.0, 60.0);
+    PlayerTextDrawColor(playerid, HUDTD[playerid][6], 0xFFFFFFFF);
+    PlayerTextDrawUseBox(playerid, HUDTD[playerid][6], 1);
+    PlayerTextDrawBoxColor(playerid, HUDTD[playerid][6], 0x000000AA);
+    PlayerTextDrawSetProportional(playerid, HUDTD[playerid][6], 1);
+    
+    HUDTD[playerid][7] = CreatePlayerTextDraw(playerid, 510.0, 385.0, "~r~VELOCIMETRO~n~~w~Velocidade: 0 KM/H~n~Combustivel: 100%~n~Motor: Ligado");
+    PlayerTextDrawAlignment(playerid, HUDTD[playerid][7], 2);
+    PlayerTextDrawBackgroundColor(playerid, HUDTD[playerid][7], 255);
+    PlayerTextDrawFont(playerid, HUDTD[playerid][7], 1);
+    PlayerTextDrawLetterSize(playerid, HUDTD[playerid][7], 0.18, 0.8);
+    PlayerTextDrawColor(playerid, HUDTD[playerid][7], COR_BRANCO);
+    PlayerTextDrawSetOutline(playerid, HUDTD[playerid][7], 1);
+    PlayerTextDrawSetProportional(playerid, HUDTD[playerid][7], 1);
+    
+    // Mostrar HUD básico (sem velocímetro)
+    for(new i = 0; i < 6; i++)
+    {
+        PlayerTextDrawShow(playerid, HUDTD[playerid][i]);
+    }
+    
+    TextDrawsHUDCriados[playerid] = true;
+    SetTimerEx("AtualizarHUD", 1000, true, "i", playerid);
+}
+
+forward AtualizarHUD(playerid);
+public AtualizarHUD(playerid)
+{
+    if(!VerificarLogin[playerid] || !TextDrawsHUDCriados[playerid]) return;
+    
+    // Atualizar dinheiro e level
+    new string_hud[128];
+    format(string_hud, sizeof(string_hud), "~g~Level: ~w~%d ~y~| Dinheiro: ~g~$%d", PlayerInfo[playerid][Level], GetPlayerMoney(playerid));
+    PlayerTextDrawSetString(playerid, HUDTD[playerid][2], string_hud);
+    
+    // Atualizar relógio
+    format(string_hud, sizeof(string_hud), "~w~%02d:%02d", ServerHora, ServerMinuto);
+    PlayerTextDrawSetString(playerid, HUDTD[playerid][5], string_hud);
+    
+    // Verificar se está em veículo para mostrar velocímetro
+    if(IsPlayerInAnyVehicle(playerid))
+    {
+        new vehicleid = GetPlayerVehicleID(playerid);
+        new Float:vx, Float:vy, Float:vz, Float:velocidade;
+        GetVehicleVelocity(vehicleid, vx, vy, vz);
+        velocidade = floatsqroot(floatpower(floatabs(vx), 2.0) + floatpower(floatabs(vy), 2.0) + floatpower(floatabs(vz), 2.0)) * 150.0;
+        
+        new engine, lights, alarm, doors, bonnet, boot, objective;
+        GetVehicleParamsEx(vehicleid, engine, lights, alarm, doors, bonnet, boot, objective);
+        
+        format(string_hud, sizeof(string_hud), "~r~VELOCIMETRO~n~~w~Velocidade: %.0f KM/H~n~Combustivel: %d%%~n~Motor: %s", 
+            velocidade, 
+            (vehicleid < MAX_SPAWN_VEICULOS) ? VeiculoInfo[vehicleid][VeiculoGasolina] : 100,
+            (engine == 1) ? "~g~Ligado" : "~r~Desligado");
+        PlayerTextDrawSetString(playerid, HUDTD[playerid][7], string_hud);
+        
+        // Mostrar velocímetro
+        PlayerTextDrawShow(playerid, HUDTD[playerid][6]);
+        PlayerTextDrawShow(playerid, HUDTD[playerid][7]);
+    }
+    else
+    {
+        // Esconder velocímetro
+        PlayerTextDrawHide(playerid, HUDTD[playerid][6]);
+        PlayerTextDrawHide(playerid, HUDTD[playerid][7]);
+    }
+}
+
+// ============== SISTEMA DE RG COMPLETO ==============
+
+stock MostrarRG(playerid)
+{
+    if(TextDrawsRGCriados[playerid]) EsconderRG(playerid);
+    
+    // Background do RG
+    RGTD[playerid][0] = CreatePlayerTextDraw(playerid, 150.0, 120.0, "LD_BEAT:chit");
+    PlayerTextDrawFont(playerid, RGTD[playerid][0], 4);
+    PlayerTextDrawLetterSize(playerid, RGTD[playerid][0], 0.5, 1.0);
+    PlayerTextDrawTextSize(playerid, RGTD[playerid][0], 340.0, 240.0);
+    PlayerTextDrawColor(playerid, RGTD[playerid][0], 0xFFFFFFFF);
+    PlayerTextDrawUseBox(playerid, RGTD[playerid][0], 1);
+    PlayerTextDrawBoxColor(playerid, RGTD[playerid][0], 0x1A1A1AEE);
+    PlayerTextDrawSetProportional(playerid, RGTD[playerid][0], 1);
+    
+    // Cabeçalho do RG
+    RGTD[playerid][1] = CreatePlayerTextDraw(playerid, 320.0, 130.0, "~p~REGISTRO GERAL - RG");
+    PlayerTextDrawAlignment(playerid, RGTD[playerid][1], 2);
+    PlayerTextDrawBackgroundColor(playerid, RGTD[playerid][1], 255);
+    PlayerTextDrawFont(playerid, RGTD[playerid][1], 2);
+    PlayerTextDrawLetterSize(playerid, RGTD[playerid][1], 0.4, 1.8);
+    PlayerTextDrawColor(playerid, RGTD[playerid][1], COR_PRINCIPAL);
+    PlayerTextDrawSetOutline(playerid, RGTD[playerid][1], 1);
+    PlayerTextDrawSetProportional(playerid, RGTD[playerid][1], 1);
+    
+    // Linha separadora
+    RGTD[playerid][2] = CreatePlayerTextDraw(playerid, 160.0, 150.0, "LD_BEAT:chit");
+    PlayerTextDrawFont(playerid, RGTD[playerid][2], 4);
+    PlayerTextDrawLetterSize(playerid, RGTD[playerid][2], 0.5, 1.0);
+    PlayerTextDrawTextSize(playerid, RGTD[playerid][2], 320.0, 2.0);
+    PlayerTextDrawColor(playerid, RGTD[playerid][2], COR_PRINCIPAL);
+    PlayerTextDrawUseBox(playerid, RGTD[playerid][2], 1);
+    PlayerTextDrawBoxColor(playerid, RGTD[playerid][2], COR_PRINCIPAL);
+    PlayerTextDrawSetProportional(playerid, RGTD[playerid][2], 1);
+    
+    // Informações pessoais - Coluna esquerda
+    new info_pessoal[512];
+    format(info_pessoal, sizeof(info_pessoal), 
+        "~w~Nome: ~y~%s~n~\
+        ~w~Idade: ~y~%d anos~n~\
+        ~w~Altura: ~y~%d cm~n~\
+        ~w~Peso: ~y~%d kg~n~\
+        ~w~Genero: ~y~%s~n~\
+        ~w~Nascimento: ~y~%s~n~\
+        ~w~Nacionalidade: ~y~%s~n~\
+        ~w~Estado Civil: ~y~%s",
+        GetPlayerNameEx(playerid),
+        PlayerInfo[playerid][Idade],
+        PlayerInfo[playerid][Altura],
+        PlayerInfo[playerid][Peso],
+        (PlayerInfo[playerid][Genero] == 0) ? "Masculino" : "Feminino",
+        PlayerInfo[playerid][Nascimento],
+        PlayerInfo[playerid][Nacionalidade],
+        PlayerInfo[playerid][EstadoCivil]
+    );
+    
+    RGTD[playerid][3] = CreatePlayerTextDraw(playerid, 165.0, 165.0, info_pessoal);
+    PlayerTextDrawBackgroundColor(playerid, RGTD[playerid][3], 255);
+    PlayerTextDrawFont(playerid, RGTD[playerid][3], 1);
+    PlayerTextDrawLetterSize(playerid, RGTD[playerid][3], 0.18, 0.8);
+    PlayerTextDrawColor(playerid, RGTD[playerid][3], COR_BRANCO);
+    PlayerTextDrawSetOutline(playerid, RGTD[playerid][3], 1);
+    PlayerTextDrawSetProportional(playerid, RGTD[playerid][3], 1);
+    
+    // Informações profissionais - Coluna direita
+    new info_profissional[512];
+    format(info_profissional, sizeof(info_profissional),
+        "~w~Emprego: ~g~%s~n~\
+        ~w~Level Emprego: ~g~%d~n~\
+        ~w~Salario: ~g~$%d/hora~n~\
+        ~w~Titulo: ~y~%s~n~\
+        ~w~Level: ~p~%d~n~\
+        ~w~Experiencia: ~p~%d~n~\
+        ~w~Horas Jogadas: ~p~%d~n~\
+        ~w~Admin Level: ~r~%d",
+        NomesEmpregos[PlayerInfo[playerid][Emprego]],
+        PlayerInfo[playerid][EmpregoLevel],
+        PlayerInfo[playerid][Salario],
+        PlayerInfo[playerid][Titulo],
+        PlayerInfo[playerid][Level],
+        PlayerInfo[playerid][Experiencia],
+        PlayerInfo[playerid][HorasJogadas],
+        PlayerInfo[playerid][Admin]
+    );
+    
+    RGTD[playerid][4] = CreatePlayerTextDraw(playerid, 320.0, 165.0, info_profissional);
+    PlayerTextDrawBackgroundColor(playerid, RGTD[playerid][4], 255);
+    PlayerTextDrawFont(playerid, RGTD[playerid][4], 1);
+    PlayerTextDrawLetterSize(playerid, RGTD[playerid][4], 0.18, 0.8);
+    PlayerTextDrawColor(playerid, RGTD[playerid][4], COR_BRANCO);
+    PlayerTextDrawSetOutline(playerid, RGTD[playerid][4], 1);
+    PlayerTextDrawSetProportional(playerid, RGTD[playerid][4], 1);
+    
+    // Estatísticas criminais
+    new estatisticas[256];
+    format(estatisticas, sizeof(estatisticas),
+        "~w~Mortes: ~r~%d ~w~| Kills: ~g~%d ~w~| Crimes: ~r~%d~n~\
+        ~w~Multas: ~y~%d ~w~| Prisoes: ~r~%d ~w~| Avisos: ~o~%d",
+        PlayerInfo[playerid][Mortes],
+        PlayerInfo[playerid][Kills],
+        PlayerInfo[playerid][Crimes],
+        PlayerInfo[playerid][Multas],
+        PlayerInfo[playerid][TempoPreso],
+        PlayerInfo[playerid][Avisos]
+    );
+    
+    RGTD[playerid][5] = CreatePlayerTextDraw(playerid, 320.0, 285.0, estatisticas);
+    PlayerTextDrawAlignment(playerid, RGTD[playerid][5], 2);
+    PlayerTextDrawBackgroundColor(playerid, RGTD[playerid][5], 255);
+    PlayerTextDrawFont(playerid, RGTD[playerid][5], 1);
+    PlayerTextDrawLetterSize(playerid, RGTD[playerid][5], 0.18, 0.8);
+    PlayerTextDrawColor(playerid, RGTD[playerid][5], COR_BRANCO);
+    PlayerTextDrawSetOutline(playerid, RGTD[playerid][5], 1);
+    PlayerTextDrawSetProportional(playerid, RGTD[playerid][5], 1);
+    
+    // Botão "Alterar Título"
+    RGTD[playerid][24] = CreatePlayerTextDraw(playerid, 200.0, 320.0, "LD_BEAT:chit");
+    PlayerTextDrawFont(playerid, RGTD[playerid][24], 4);
+    PlayerTextDrawLetterSize(playerid, RGTD[playerid][24], 0.5, 1.0);
+    PlayerTextDrawTextSize(playerid, RGTD[playerid][24], 100.0, 20.0);
+    PlayerTextDrawColor(playerid, RGTD[playerid][24], 0xFFFFFFFF);
+    PlayerTextDrawUseBox(playerid, RGTD[playerid][24], 1);
+    PlayerTextDrawBoxColor(playerid, RGTD[playerid][24], COR_ACCENT);
+    PlayerTextDrawSetOutline(playerid, RGTD[playerid][24], 0);
+    PlayerTextDrawSetProportional(playerid, RGTD[playerid][24], 1);
+    PlayerTextDrawSetSelectable(playerid, RGTD[playerid][24], 1);
+    
+    RGTD[playerid][25] = CreatePlayerTextDraw(playerid, 250.0, 325.0, "ALTERAR TITULO");
+    PlayerTextDrawAlignment(playerid, RGTD[playerid][25], 2);
+    PlayerTextDrawBackgroundColor(playerid, RGTD[playerid][25], 255);
+    PlayerTextDrawFont(playerid, RGTD[playerid][25], 2);
+    PlayerTextDrawLetterSize(playerid, RGTD[playerid][25], 0.22, 1.0);
+    PlayerTextDrawColor(playerid, RGTD[playerid][25], COR_BRANCO);
+    PlayerTextDrawSetOutline(playerid, RGTD[playerid][25], 1);
+    PlayerTextDrawSetProportional(playerid, RGTD[playerid][25], 1);
+    
+    // Botão "Fechar"
+    RGTD[playerid][26] = CreatePlayerTextDraw(playerid, 340.0, 320.0, "LD_BEAT:chit");
+    PlayerTextDrawFont(playerid, RGTD[playerid][26], 4);
+    PlayerTextDrawLetterSize(playerid, RGTD[playerid][26], 0.5, 1.0);
+    PlayerTextDrawTextSize(playerid, RGTD[playerid][26], 70.0, 20.0);
+    PlayerTextDrawColor(playerid, RGTD[playerid][26], 0xFFFFFFFF);
+    PlayerTextDrawUseBox(playerid, RGTD[playerid][26], 1);
+    PlayerTextDrawBoxColor(playerid, RGTD[playerid][26], COR_VERMELHO);
+    PlayerTextDrawSetOutline(playerid, RGTD[playerid][26], 0);
+    PlayerTextDrawSetProportional(playerid, RGTD[playerid][26], 1);
+    PlayerTextDrawSetSelectable(playerid, RGTD[playerid][26], 1);
+    
+    RGTD[playerid][27] = CreatePlayerTextDraw(playerid, 375.0, 325.0, "FECHAR");
+    PlayerTextDrawAlignment(playerid, RGTD[playerid][27], 2);
+    PlayerTextDrawBackgroundColor(playerid, RGTD[playerid][27], 255);
+    PlayerTextDrawFont(playerid, RGTD[playerid][27], 2);
+    PlayerTextDrawLetterSize(playerid, RGTD[playerid][27], 0.22, 1.0);
+    PlayerTextDrawColor(playerid, RGTD[playerid][27], COR_BRANCO);
+    PlayerTextDrawSetOutline(playerid, RGTD[playerid][27], 1);
+    PlayerTextDrawSetProportional(playerid, RGTD[playerid][27], 1);
+    
+    // Mostrar todos os textdraws do RG
+    for(new i = 0; i < MAX_RG_TEXTDRAWS; i++)
+    {
+        if(RGTD[playerid][i] != INVALID_PLAYER_TEXT_DRAW)
+        {
+            PlayerTextDrawShow(playerid, RGTD[playerid][i]);
+        }
+    }
+    
+    SelectTextDraw(playerid, COR_ACCENT);
+    TextDrawsRGCriados[playerid] = true;
+}
+
+stock EsconderRG(playerid)
+{
+    if(!TextDrawsRGCriados[playerid]) return;
+    
+    for(new i = 0; i < MAX_RG_TEXTDRAWS; i++)
+    {
+        if(RGTD[playerid][i] != INVALID_PLAYER_TEXT_DRAW)
+        {
+            PlayerTextDrawDestroy(playerid, RGTD[playerid][i]);
+            RGTD[playerid][i] = INVALID_PLAYER_TEXT_DRAW;
+        }
+    }
+    
+    CancelSelectTextDraw(playerid);
+    TextDrawsRGCriados[playerid] = false;
+}
+
+stock MostrarTitulos(playerid)
+{
+    new titulos_str[2048], titulo_temp[128];
+    
+    format(titulos_str, sizeof(titulos_str), "{9F2B8E}• TÍTULOS DISPONÍVEIS\n\n");
+    
+    for(new i = 0; i < sizeof(ListaTitulos); i++)
+    {
+        format(titulo_temp, sizeof(titulo_temp), "{FFFFFF}%s\n", ListaTitulos[i]);
+        strcat(titulos_str, titulo_temp);
+    }
+    
+    SPD(playerid, D_TITULOS, DIALOG_STYLE_LIST, "{9F2B8E}• Escolha seu Título", titulos_str, "Escolher", "Cancelar");
+}
+
+// ============== SISTEMA DE INICIALIZAÇÃO ==============
+
+stock InicializarSistemas()
+{
+    print("Inicializando sistemas do servidor...");
+    
+    // Inicializar arrays
+    for(new i = 0; i < MAX_CASAS; i++)
+    {
+        CasaInfo[i][CasaX] = 0.0;
+        CasaInfo[i][CasaY] = 0.0;
+        CasaInfo[i][CasaZ] = 0.0;
+        CasaInfo[i][CasaPreco] = 0;
+        format(CasaInfo[i][CasaDono], MAX_PLAYER_NAME, "Ninguem");
+        CasaInfo[i][CasaVenda] = 0;
+        CasaInfo[i][CasaLabel] = Text3D:INVALID_3DTEXT_ID;
+        CasaInfo[i][CasaPickup] = -1;
+    }
+    
+    for(new i = 0; i < MAX_EMPRESAS; i++)
+    {
+        EmpresaInfo[i][EmpresaX] = 0.0;
+        EmpresaInfo[i][EmpresaY] = 0.0;
+        EmpresaInfo[i][EmpresaZ] = 0.0;
+        EmpresaInfo[i][EmpresaPreco] = 0;
+        format(EmpresaInfo[i][EmpresaNome], 64, "Empresa %d", i);
+        format(EmpresaInfo[i][EmpresaDono], MAX_PLAYER_NAME, "Ninguem");
+        EmpresaInfo[i][EmpresaVenda] = 0;
+        EmpresaInfo[i][EmpresaLabel] = Text3D:INVALID_3DTEXT_ID;
+        EmpresaInfo[i][EmpresaPickup] = -1;
+    }
+    
+    for(new i = 0; i < MAX_FACCOES; i++)
+    {
+        format(FaccaoInfo[i][FaccaoNome], 64, "Faccao %d", i);
+        format(FaccaoInfo[i][FaccaoTag], 8, "F%d", i);
+        FaccaoInfo[i][FaccaoTipo] = 0;
+        FaccaoInfo[i][FaccaoAtiva] = 0;
+    }
+    
+    for(new i = 0; i < MAX_SPAWN_VEICULOS; i++)
+    {
+        VeiculoInfo[i][VeiculoModelo] = 0;
+        VeiculoInfo[i][VeiculoGasolina] = 100;
+        VeiculoInfo[i][VeiculoKM] = 0;
+        format(VeiculoInfo[i][VeiculoDono], MAX_PLAYER_NAME, "Ninguem");
+        VeiculoInfo[i][VeiculoID] = INVALID_VEHICLE_ID;
+    }
+    
+    print("Sistemas inicializados com sucesso!");
+}
+
+// ============== SISTEMA DE MAPEAMENTO E INTERIORES ==============
+
+stock CriarMapeamento()
+{
+    print("Carregando mapeamento e interiores...");
+    
+    // ===== DELEGACIA DE POLÍCIA =====
+    CreateObject(987, 1568.5, -1693.7, 13.0, 0.0, 0.0, 0.0); // Cerca
+    CreateObject(987, 1578.5, -1693.7, 13.0, 0.0, 0.0, 0.0); 
+    CreateObject(987, 1588.5, -1693.7, 13.0, 0.0, 0.0, 0.0);
+    CreateObject(3037, 1573.0, -1685.0, 13.5, 0.0, 0.0, 90.0); // Prédio da delegacia
+    CreateObject(1569, 1575.0, -1685.0, 13.5, 0.0, 0.0, 0.0); // Porta
+    
+    // ===== HOSPITAL =====
+    CreateObject(3074, 1172.0, -1323.0, 15.0, 0.0, 0.0, 270.0); // Hospital
+    CreateObject(1569, 1172.0, -1323.0, 15.0, 0.0, 0.0, 0.0); // Porta principal
+    CreateObject(3853, 1170.0, -1320.0, 15.5, 0.0, 0.0, 0.0); // Placa hospital
+    
+    // ===== BANCO =====
+    CreateObject(3064, 1462.0, -1011.0, 23.8, 0.0, 0.0, 0.0); // Prédio banco
+    CreateObject(1569, 1462.0, -1011.0, 23.8, 0.0, 0.0, 0.0); // Porta
+    CreateObject(3864, 1460.0, -1008.0, 25.0, 0.0, 0.0, 0.0); // ATM
+    CreateObject(3864, 1465.0, -1008.0, 25.0, 0.0, 0.0, 0.0); // ATM
+    
+    // ===== PREFEITURA =====
+    CreateObject(3094, 1481.0, -1740.0, 13.5, 0.0, 0.0, 0.0); // Prefeitura
+    CreateObject(1569, 1481.0, -1740.0, 13.5, 0.0, 0.0, 0.0); // Porta
+    CreateObject(3851, 1478.0, -1737.0, 15.0, 0.0, 0.0, 0.0); // Placa
+    
+    // ===== AEROPORTO =====
+    CreateObject(3095, 1681.0, -2335.0, 13.5, 0.0, 0.0, 0.0); // Terminal
+    CreateObject(3866, 1700.0, -2400.0, 13.5, 0.0, 0.0, 90.0); // Pista
+    CreateObject(3866, 1720.0, -2400.0, 13.5, 0.0, 0.0, 90.0);
+    CreateObject(3866, 1740.0, -2400.0, 13.5, 0.0, 0.0, 90.0);
+    
+    // ===== PORTO =====
+    CreateObject(3095, 2595.0, -2300.0, 13.5, 0.0, 0.0, 180.0); // Armazém
+    CreateObject(3095, 2615.0, -2300.0, 13.5, 0.0, 0.0, 180.0);
+    CreateObject(3627, 2600.0, -2250.0, 0.0, 0.0, 0.0, 0.0); // Ponte do porto
+    
+    // ===== AUTO ESCOLA =====
+    CreateObject(3037, 1494.0, -1584.0, 13.5, 0.0, 0.0, 0.0); // Prédio
+    CreateObject(1569, 1494.0, -1584.0, 13.5, 0.0, 0.0, 0.0); // Porta
+    CreateObject(3864, 1492.0, -1581.0, 14.5, 0.0, 0.0, 0.0); // Placa
+    
+    // ===== CONCESSIONÁRIA =====
+    CreateObject(3037, 2131.0, -1149.0, 24.0, 0.0, 0.0, 0.0); // Showroom
+    CreateObject(1569, 2131.0, -1149.0, 24.0, 0.0, 0.0, 0.0); // Porta
+    CreateObject(3864, 2129.0, -1146.0, 25.0, 0.0, 0.0, 0.0); // Placa
+    
+    // ===== POSTO DE GASOLINA =====
+    CreateObject(1676, 1004.0, -1024.0, 32.0, 0.0, 0.0, 0.0); // Bomba 1
+    CreateObject(1676, 1008.0, -1024.0, 32.0, 0.0, 0.0, 0.0); // Bomba 2
+    CreateObject(1676, 1012.0, -1024.0, 32.0, 0.0, 0.0, 0.0); // Bomba 3
+    CreateObject(1686, 1000.0, -1020.0, 32.0, 0.0, 0.0, 0.0); // Placa posto
+    
+    // ===== LOJA DE ARMAS =====
+    CreateObject(3037, 1368.0, -1279.0, 13.5, 0.0, 0.0, 0.0); // Ammunation
+    CreateObject(1569, 1368.0, -1279.0, 13.5, 0.0, 0.0, 0.0); // Porta
+    CreateObject(3851, 1366.0, -1276.0, 15.0, 0.0, 0.0, 0.0); // Placa
+    
+    // ===== RESTAURANTE =====
+    CreateObject(3037, 2104.0, -1806.0, 13.5, 0.0, 0.0, 0.0); // Cluckin Bell
+    CreateObject(1569, 2104.0, -1806.0, 13.5, 0.0, 0.0, 0.0); // Porta
+    CreateObject(3851, 2102.0, -1803.0, 15.0, 0.0, 0.0, 0.0); // Placa
+    
+    // ===== CLUBE NOTURNO =====
+    CreateObject(3037, 1834.0, -1682.0, 13.5, 0.0, 0.0, 0.0); // Alhambra
+    CreateObject(1569, 1834.0, -1682.0, 13.5, 0.0, 0.0, 0.0); // Porta
+    CreateObject(3851, 1832.0, -1679.0, 15.0, 0.0, 0.0, 0.0); // Placa
+    
+    // ===== SHOPPING CENTER =====
+    CreateObject(3074, 1133.0, -1457.0, 15.8, 0.0, 0.0, 0.0); // Mall
+    CreateObject(1569, 1133.0, -1457.0, 15.8, 0.0, 0.0, 0.0); // Porta principal
+    CreateObject(1569, 1150.0, -1457.0, 15.8, 0.0, 0.0, 0.0); // Porta lateral
+    
+    // ===== DECORAÇÕES URBANAS =====
+    CreateObject(1215, 1500.0, -1600.0, 13.5, 0.0, 0.0, 0.0); // Telefone público
+    CreateObject(1215, 1600.0, -1700.0, 13.5, 0.0, 0.0, 0.0);
+    CreateObject(1280, 1520.0, -1620.0, 13.5, 0.0, 0.0, 0.0); // Bancos
+    CreateObject(1280, 1540.0, -1640.0, 13.5, 0.0, 0.0, 0.0);
+    CreateObject(1362, 1560.0, -1660.0, 13.5, 0.0, 0.0, 45.0); // Lixeiras
+    CreateObject(1362, 1580.0, -1680.0, 13.5, 0.0, 0.0, 45.0);
+    
+    // ===== SEMÁFOROS =====
+    CreateObject(1367, 1480.0, -1630.0, 16.0, 0.0, 0.0, 0.0);
+    CreateObject(1367, 1550.0, -1700.0, 16.0, 0.0, 0.0, 0.0);
+    CreateObject(1367, 1620.0, -1770.0, 16.0, 0.0, 0.0, 0.0);
+    
+    print("Mapeamento carregado: 50+ objetos criados!");
+}
+
+stock CriarPickupsPrincipais()
+{
+    // Pickups dos locais principais
+    PickupBanco = CreatePickup(1274, 1, 1462.0, -1011.0, 23.8, 0); // Banco
+    PickupDelegacia = CreatePickup(1247, 1, 1568.5, -1693.7, 13.0, 0); // Delegacia
+    PickupHospital = CreatePickup(1240, 1, 1172.0, -1323.0, 15.0, 0); // Hospital
+    PickupPrefeitura = CreatePickup(1239, 1, 1481.0, -1740.0, 13.5, 0); // Prefeitura
+    PickupDMV = CreatePickup(1239, 1, 1494.0, -1584.0, 13.5, 0); // Auto Escola
+    PickupAeroporto = CreatePickup(1318, 1, 1681.0, -2335.0, 13.5, 0); // Aeroporto
+    PickupPorto = CreatePickup(1318, 1, 2595.0, -2300.0, 13.5, 0); // Porto
+    PickupAutoEscola = CreatePickup(1239, 1, 1494.0, -1584.0, 13.5, 0); // Auto Escola
+    
+    print("Pickups principais criados: 8 locais!");
+}
+
+// ============== SISTEMA DE CASAS COMPLETO ==============
+
+stock CarregarCasas()
+{
+    print("Carregando sistema de casas...");
+    
+    // Criar casas padrão se não existirem
+    if(!DOF2_FileExists("Servidor/casas_criadas.ini"))
+    {
+        CriarCasasPadrao();
+        DOF2_CreateFile("Servidor/casas_criadas.ini");
+        DOF2_SetInt("Servidor/casas_criadas.ini", "Criadas", 1);
+    }
+    
+    // Carregar casas existentes
+    new arquivo_casa[64];
+    for(new i = 0; i < MAX_CASAS; i++)
+    {
+        format(arquivo_casa, sizeof(arquivo_casa), PASTA_CASAS, i);
+        if(DOF2_FileExists(arquivo_casa))
+        {
+            CasaInfo[i][CasaX] = DOF2_GetFloat(arquivo_casa, "X");
+            CasaInfo[i][CasaY] = DOF2_GetFloat(arquivo_casa, "Y");
+            CasaInfo[i][CasaZ] = DOF2_GetFloat(arquivo_casa, "Z");
+            CasaInfo[i][CasaIntX] = DOF2_GetFloat(arquivo_casa, "IntX");
+            CasaInfo[i][CasaIntY] = DOF2_GetFloat(arquivo_casa, "IntY");
+            CasaInfo[i][CasaIntZ] = DOF2_GetFloat(arquivo_casa, "IntZ");
+            CasaInfo[i][CasaInt] = DOF2_GetInt(arquivo_casa, "Interior");
+            CasaInfo[i][CasaVW] = DOF2_GetInt(arquivo_casa, "VirtualWorld");
+            CasaInfo[i][CasaPreco] = DOF2_GetInt(arquivo_casa, "Preco");
+            DOF2_GetString(arquivo_casa, "Dono", CasaInfo[i][CasaDono], MAX_PLAYER_NAME);
+            CasaInfo[i][CasaAluguel] = DOF2_GetInt(arquivo_casa, "Aluguel");
+            CasaInfo[i][CasaFechada] = DOF2_GetInt(arquivo_casa, "Fechada");
+            CasaInfo[i][CasaVenda] = DOF2_GetInt(arquivo_casa, "Venda");
+            
+            // Criar pickup e label
+            AtualizarLabelCasa(i);
+            TotalCasas++;
+        }
+    }
+    
+    printf("Sistema de casas carregado: %d casas!", TotalCasas);
+}
+
+stock CriarCasasPadrao()
+{
+    print("Criando casas padrão...");
+    
+    // Casas em diferentes bairros de Los Santos
+    new Float:casas_coords[][6] = {
+        // Ganton - Casas pequenas
+        {2495.0, -1688.0, 13.3, 2196.0, -1204.0, 1049.0}, // Casa simples
+        {2514.0, -1679.0, 13.5, 2196.0, -1204.0, 1049.0},
+        {2522.0, -1673.0, 14.0, 2196.0, -1204.0, 1049.0},
+        {2495.0, -1647.0, 13.8, 2196.0, -1204.0, 1049.0},
+        {2514.0, -1641.0, 13.3, 2196.0, -1204.0, 1049.0},
+        
+        // Idlewood - Casas médias
+        {2013.0, -1717.0, 13.5, 2282.0, -1138.0, 1050.0}, // Casa média
+        {2095.0, -1793.0, 13.4, 2282.0, -1138.0, 1050.0},
+        {2133.0, -1808.0, 13.3, 2282.0, -1138.0, 1050.0},
+        {2180.0, -1785.0, 13.5, 2282.0, -1138.0, 1050.0},
+        {2194.0, -1760.0, 13.5, 2282.0, -1138.0, 1050.0},
+        
+        // East Los Santos - Casas grandes
+        {2779.0, -1926.0, 13.5, 2365.0, -1131.0, 1051.0}, // Casa luxo
+        {2817.0, -1987.0, 13.5, 2365.0, -1131.0, 1051.0},
+        {2861.0, -2025.0, 13.5, 2365.0, -1131.0, 1051.0},
+        {2894.0, -1990.0, 13.0, 2365.0, -1131.0, 1051.0},
+        {2829.0, -1852.0, 10.8, 2365.0, -1131.0, 1051.0},
+        
+        // Vinewood - Mansões
+        {1412.0, -886.0, 50.6, 2365.0, -1131.0, 1051.0}, // Mansão
+        {1440.0, -926.0, 38.2, 2365.0, -1131.0, 1051.0},
+        {1468.0, -906.0, 54.8, 2365.0, -1131.0, 1051.0},
+        {1495.0, -888.0, 57.1, 2365.0, -1131.0, 1051.0},
+        {1527.0, -899.0, 60.0, 2365.0, -1131.0, 1051.0}
+    };
+    
+    new precos[20] = {
+        50000, 52000, 48000, 55000, 53000,   // Ganton
+        85000, 88000, 82000, 90000, 87000,   // Idlewood
+        150000, 155000, 160000, 148000, 152000, // East LS
+        500000, 520000, 480000, 550000, 510000  // Vinewood
+    };
+    
+    new interiores[5] = {1, 2, 5, 7, 8}; // IDs de interiores diferentes
+    
+    for(new i = 0; i < 20; i++)
+    {
+        new arquivo_casa[64];
+        format(arquivo_casa, sizeof(arquivo_casa), PASTA_CASAS, i);
+        
+        DOF2_CreateFile(arquivo_casa);
+        DOF2_SetFloat(arquivo_casa, "X", casas_coords[i][0]);
+        DOF2_SetFloat(arquivo_casa, "Y", casas_coords[i][1]);
+        DOF2_SetFloat(arquivo_casa, "Z", casas_coords[i][2]);
+        DOF2_SetFloat(arquivo_casa, "IntX", casas_coords[i][3]);
+        DOF2_SetFloat(arquivo_casa, "IntY", casas_coords[i][4]);
+        DOF2_SetFloat(arquivo_casa, "IntZ", casas_coords[i][5]);
+        DOF2_SetInt(arquivo_casa, "Interior", interiores[i % 5]);
+        DOF2_SetInt(arquivo_casa, "VirtualWorld", i + 1000);
+        DOF2_SetInt(arquivo_casa, "Preco", precos[i]);
+        DOF2_SetString(arquivo_casa, "Dono", "Ninguem");
+        DOF2_SetInt(arquivo_casa, "Aluguel", precos[i] / 100);
+        DOF2_SetInt(arquivo_casa, "Fechada", 0);
+        DOF2_SetInt(arquivo_casa, "Venda", 1);
+        
+        // Definir valores no array
+        CasaInfo[i][CasaX] = casas_coords[i][0];
+        CasaInfo[i][CasaY] = casas_coords[i][1];
+        CasaInfo[i][CasaZ] = casas_coords[i][2];
+        CasaInfo[i][CasaIntX] = casas_coords[i][3];
+        CasaInfo[i][CasaIntY] = casas_coords[i][4];
+        CasaInfo[i][CasaIntZ] = casas_coords[i][5];
+        CasaInfo[i][CasaInt] = interiores[i % 5];
+        CasaInfo[i][CasaVW] = i + 1000;
+        CasaInfo[i][CasaPreco] = precos[i];
+        format(CasaInfo[i][CasaDono], MAX_PLAYER_NAME, "Ninguem");
+        CasaInfo[i][CasaAluguel] = precos[i] / 100;
+        CasaInfo[i][CasaFechada] = 0;
+        CasaInfo[i][CasaVenda] = 1;
+    }
+    
+    print("20 casas padrão criadas!");
+}
+
+stock AtualizarLabelCasa(casaid)
+{
+    if(casaid < 0 || casaid >= MAX_CASAS) return;
+    
+    // Destruir label anterior se existir
+    if(CasaInfo[casaid][CasaLabel] != Text3D:INVALID_3DTEXT_ID)
+    {
+        Delete3DTextLabel(CasaInfo[casaid][CasaLabel]);
+    }
+    
+    // Destruir pickup anterior se existir
+    if(CasaInfo[casaid][CasaPickup] != -1)
+    {
+        DestroyPickup(CasaInfo[casaid][CasaPickup]);
+    }
+    
+    // Criar novo label baseado no status da casa
+    new label_text[256];
+    
+    if(CasaInfo[casaid][CasaVenda])
+    {
+        format(label_text, sizeof(label_text), 
+            "{4CAF50}Casa ID: %d\n{FFFFFF}Status: {4CAF50}À Venda\n{FFFFFF}Preço: {4CAF50}$%d\n{FFFFFF}Aluguel: {FFD700}$%d/hora\n{9E9E9E}Use /comprarcasa", 
+            casaid, CasaInfo[casaid][CasaPreco], CasaInfo[casaid][CasaAluguel]);
+        
+        CasaInfo[casaid][CasaPickup] = CreatePickup(1273, 1, CasaInfo[casaid][CasaX], CasaInfo[casaid][CasaY], CasaInfo[casaid][CasaZ], 0);
+    }
+    else
+    {
+        format(label_text, sizeof(label_text), 
+            "{9F2B8E}Casa ID: %d\n{FFFFFF}Dono: {9F2B8E}%s\n{FFFFFF}Status: {F44336}Ocupada\n{FFFFFF}Aluguel: {FFD700}$%d/hora", 
+            casaid, CasaInfo[casaid][CasaDono], CasaInfo[casaid][CasaAluguel]);
+        
+        CasaInfo[casaid][CasaPickup] = CreatePickup(1272, 1, CasaInfo[casaid][CasaX], CasaInfo[casaid][CasaY], CasaInfo[casaid][CasaZ], 0);
+    }
+    
+    CasaInfo[casaid][CasaLabel] = Create3DTextLabel(label_text, COR_BRANCO, 
+        CasaInfo[casaid][CasaX], CasaInfo[casaid][CasaY], CasaInfo[casaid][CasaZ] + 0.5, 10.0, 0, 0);
+}
+
+public SalvarCasa(casaid)
+{
+    if(casaid < 0 || casaid >= MAX_CASAS) return;
+    
+    new arquivo_casa[64];
+    format(arquivo_casa, sizeof(arquivo_casa), PASTA_CASAS, casaid);
+    
+    DOF2_SetFloat(arquivo_casa, "X", CasaInfo[casaid][CasaX]);
+    DOF2_SetFloat(arquivo_casa, "Y", CasaInfo[casaid][CasaY]);
+    DOF2_SetFloat(arquivo_casa, "Z", CasaInfo[casaid][CasaZ]);
+    DOF2_SetFloat(arquivo_casa, "IntX", CasaInfo[casaid][CasaIntX]);
+    DOF2_SetFloat(arquivo_casa, "IntY", CasaInfo[casaid][CasaIntY]);
+    DOF2_SetFloat(arquivo_casa, "IntZ", CasaInfo[casaid][CasaIntZ]);
+    DOF2_SetInt(arquivo_casa, "Interior", CasaInfo[casaid][CasaInt]);
+    DOF2_SetInt(arquivo_casa, "VirtualWorld", CasaInfo[casaid][CasaVW]);
+    DOF2_SetInt(arquivo_casa, "Preco", CasaInfo[casaid][CasaPreco]);
+    DOF2_SetString(arquivo_casa, "Dono", CasaInfo[casaid][CasaDono]);
+    DOF2_SetInt(arquivo_casa, "Aluguel", CasaInfo[casaid][CasaAluguel]);
+    DOF2_SetInt(arquivo_casa, "Fechada", CasaInfo[casaid][CasaFechada]);
+    DOF2_SetInt(arquivo_casa, "Venda", CasaInfo[casaid][CasaVenda]);
+}
+
+// ============== SISTEMA DE EMPRESAS COMPLETO ==============
+
+stock CarregarEmpresas()
+{
+    print("Carregando sistema de empresas...");
+    
+    // Criar empresas padrão se não existirem
+    if(!DOF2_FileExists("Servidor/empresas_criadas.ini"))
+    {
+        CriarEmpresasPadrao();
+        DOF2_CreateFile("Servidor/empresas_criadas.ini");
+        DOF2_SetInt("Servidor/empresas_criadas.ini", "Criadas", 1);
+    }
+    
+    // Carregar empresas existentes
+    new arquivo_empresa[64];
+    for(new i = 0; i < MAX_EMPRESAS; i++)
+    {
+        format(arquivo_empresa, sizeof(arquivo_empresa), PASTA_EMPRESAS, i);
+        if(DOF2_FileExists(arquivo_empresa))
+        {
+            EmpresaInfo[i][EmpresaX] = DOF2_GetFloat(arquivo_empresa, "X");
+            EmpresaInfo[i][EmpresaY] = DOF2_GetFloat(arquivo_empresa, "Y");
+            EmpresaInfo[i][EmpresaZ] = DOF2_GetFloat(arquivo_empresa, "Z");
+            EmpresaInfo[i][EmpresaIntX] = DOF2_GetFloat(arquivo_empresa, "IntX");
+            EmpresaInfo[i][EmpresaIntY] = DOF2_GetFloat(arquivo_empresa, "IntY");
+            EmpresaInfo[i][EmpresaIntZ] = DOF2_GetFloat(arquivo_empresa, "IntZ");
+            EmpresaInfo[i][EmpresaInt] = DOF2_GetInt(arquivo_empresa, "Interior");
+            EmpresaInfo[i][EmpresaVW] = DOF2_GetInt(arquivo_empresa, "VirtualWorld");
+            DOF2_GetString(arquivo_empresa, "Nome", EmpresaInfo[i][EmpresaNome], 64);
+            EmpresaInfo[i][EmpresaTipo] = DOF2_GetInt(arquivo_empresa, "Tipo");
+            EmpresaInfo[i][EmpresaPreco] = DOF2_GetInt(arquivo_empresa, "Preco");
+            DOF2_GetString(arquivo_empresa, "Dono", EmpresaInfo[i][EmpresaDono], MAX_PLAYER_NAME);
+            EmpresaInfo[i][EmpresaCofre] = DOF2_GetInt(arquivo_empresa, "Cofre");
+            EmpresaInfo[i][EmpresaLucro] = DOF2_GetInt(arquivo_empresa, "Lucro");
+            EmpresaInfo[i][EmpresaVenda] = DOF2_GetInt(arquivo_empresa, "Venda");
+            
+            // Criar pickup e label
+            AtualizarLabelEmpresa(i);
+            TotalEmpresas++;
+        }
+    }
+    
+    printf("Sistema de empresas carregado: %d empresas!", TotalEmpresas);
+}
+
+stock CriarEmpresasPadrao()
+{
+    print("Criando empresas padrão...");
+    
+    new Float:empresas_coords[][6] = {
+        // Restaurantes
+        {2104.0, -1806.0, 13.5, 363.0, -75.0, 1001.5}, // Cluckin Bell
+        {1199.0, -918.0, 43.1, 363.0, -75.0, 1001.5}, // Cluckin Bell 2
+        {2397.0, -1899.0, 13.5, 375.0, -65.0, 1001.5}, // Pizza Stack
+        
+        // Lojas de roupas
+        {207.0, -109.0, 1005.1, 207.0, -111.0, 1005.1}, // Binco
+        {161.0, -83.0, 1001.8, 161.0, -83.0, 1001.8}, // ZIP
+        {204.0, -166.0, 1000.5, 204.0, -166.0, 1000.5}, // Victim
+        
+        // Postos de gasolina
+        {1004.0, -1024.0, 32.0, 1004.0, -1024.0, 32.0}, // Posto 1
+        {1944.0, -1772.0, 13.6, 1944.0, -1772.0, 13.6}, // Posto 2
+        {2202.0, -2356.0, 13.5, 2202.0, -2356.0, 13.5}, // Posto 3
+        
+        // Bares/Clubes
+        {1834.0, -1682.0, 13.5, 501.0, -69.0, 998.7}, // Alhambra
+        {2421.0, -1509.0, 24.0, 501.0, -69.0, 998.7}, // Ten Green Bottles
+        {1872.0, -2071.0, 13.5, 501.0, -69.0, 998.7}, // Bar genérico
+        
+        // Oficinas mecânicas
+        {1337.0, -1279.0, 13.5, 1337.0, -1279.0, 13.5}, // Transfender
+        {2386.0, -1715.0, 13.5, 2386.0, -1715.0, 13.5}, // Loco Low Co
+        {1041.0, -1024.0, 32.1, 1041.0, -1024.0, 32.1}, // WheelArch Angels
+        
+        // Lojas diversas
+        {1833.0, -1842.0, 13.5, 833.0, -842.0, 13.5}, // 24/7
+        {2247.0, -1663.0, 15.5, 247.0, -663.0, 15.5}, // 24/7
+        {1315.0, -897.0, 39.6, 315.0, -897.0, 39.6}, // 24/7
+        
+        // Concessionárias
+        {2131.0, -1149.0, 24.0, 2131.0, -1149.0, 24.0}, // Wang Cars
+        {1948.0, -2287.0, 13.5, 1948.0, -2287.0, 13.5}, // Segunda Mão
+        
+        // Academias
+        {1968.0, -1772.0, 13.6, 773.0, -48.0, 1000.6}, // Ganton Gym
+        {2229.0, -1721.0, 13.5, 773.0, -48.0, 1000.6}  // Cobra Martial Arts
+    };
+    
+    new empresas_nomes[][64] = {
+        "Cluckin Bell Ganton", "Cluckin Bell Vinewood", "Pizza Stack",
+        "Binco", "ZIP", "Victim",
+        "Posto Shell Ganton", "Posto 76 Idlewood", "Posto Xoomer",
+        "Alhambra", "Ten Green Bottles", "Bar do Zé",
+        "Transfender", "Loco Low Co", "WheelArch Angels",
+        "24/7 Idlewood", "24/7 Jefferson", "24/7 Vinewood",
+        "Wang Cars", "Carros Usados", "Ganton Gym", "Cobra Martial Arts"
+    };
+    
+    new empresas_tipos[22] = {
+        1, 1, 1, // Restaurantes
+        2, 2, 2, // Roupas
+        3, 3, 3, // Postos
+        4, 4, 4, // Bares
+        5, 5, 5, // Oficinas
+        6, 6, 6, // Lojas
+        7, 7, 8, 8 // Concessionárias e academias
+    };
+    
+    new empresas_precos[22] = {
+        150000, 180000, 140000, // Restaurantes
+        100000, 120000, 110000, // Roupas
+        200000, 190000, 210000, // Postos
+        250000, 230000, 180000, // Bares
+        160000, 170000, 165000, // Oficinas
+        80000, 85000, 90000,    // Lojas
+        300000, 220000, 130000, 140000 // Outros
+    };
+    
+    for(new i = 0; i < 22; i++)
+    {
+        new arquivo_empresa[64];
+        format(arquivo_empresa, sizeof(arquivo_empresa), PASTA_EMPRESAS, i);
+        
+        DOF2_CreateFile(arquivo_empresa);
+        DOF2_SetFloat(arquivo_empresa, "X", empresas_coords[i][0]);
+        DOF2_SetFloat(arquivo_empresa, "Y", empresas_coords[i][1]);
+        DOF2_SetFloat(arquivo_empresa, "Z", empresas_coords[i][2]);
+        DOF2_SetFloat(arquivo_empresa, "IntX", empresas_coords[i][3]);
+        DOF2_SetFloat(arquivo_empresa, "IntY", empresas_coords[i][4]);
+        DOF2_SetFloat(arquivo_empresa, "IntZ", empresas_coords[i][5]);
+        DOF2_SetInt(arquivo_empresa, "Interior", 0);
+        DOF2_SetInt(arquivo_empresa, "VirtualWorld", i + 2000);
+        DOF2_SetString(arquivo_empresa, "Nome", empresas_nomes[i]);
+        DOF2_SetInt(arquivo_empresa, "Tipo", empresas_tipos[i]);
+        DOF2_SetInt(arquivo_empresa, "Preco", empresas_precos[i]);
+        DOF2_SetString(arquivo_empresa, "Dono", "Ninguem");
+        DOF2_SetInt(arquivo_empresa, "Cofre", 0);
+        DOF2_SetInt(arquivo_empresa, "Lucro", empresas_precos[i] / 50);
+        DOF2_SetInt(arquivo_empresa, "Venda", 1);
+        
+        // Definir valores no array
+        EmpresaInfo[i][EmpresaX] = empresas_coords[i][0];
+        EmpresaInfo[i][EmpresaY] = empresas_coords[i][1];
+        EmpresaInfo[i][EmpresaZ] = empresas_coords[i][2];
+        EmpresaInfo[i][EmpresaIntX] = empresas_coords[i][3];
+        EmpresaInfo[i][EmpresaIntY] = empresas_coords[i][4];
+        EmpresaInfo[i][EmpresaIntZ] = empresas_coords[i][5];
+        EmpresaInfo[i][EmpresaInt] = 0;
+        EmpresaInfo[i][EmpresaVW] = i + 2000;
+        format(EmpresaInfo[i][EmpresaNome], 64, "%s", empresas_nomes[i]);
+        EmpresaInfo[i][EmpresaTipo] = empresas_tipos[i];
+        EmpresaInfo[i][EmpresaPreco] = empresas_precos[i];
+        format(EmpresaInfo[i][EmpresaDono], MAX_PLAYER_NAME, "Ninguem");
+        EmpresaInfo[i][EmpresaCofre] = 0;
+        EmpresaInfo[i][EmpresaLucro] = empresas_precos[i] / 50;
+        EmpresaInfo[i][EmpresaVenda] = 1;
+    }
+    
+    print("22 empresas padrão criadas!");
+}
+
+stock AtualizarLabelEmpresa(empresaid)
+{
+    if(empresaid < 0 || empresaid >= MAX_EMPRESAS) return;
+    
+    // Destruir label anterior se existir
+    if(EmpresaInfo[empresaid][EmpresaLabel] != Text3D:INVALID_3DTEXT_ID)
+    {
+        Delete3DTextLabel(EmpresaInfo[empresaid][EmpresaLabel]);
+    }
+    
+    // Destruir pickup anterior se existir
+    if(EmpresaInfo[empresaid][EmpresaPickup] != -1)
+    {
+        DestroyPickup(EmpresaInfo[empresaid][EmpresaPickup]);
+    }
+    
+    // Criar novo label baseado no status da empresa
+    new label_text[256];
+    
+    if(EmpresaInfo[empresaid][EmpresaVenda])
+    {
+        format(label_text, sizeof(label_text), 
+            "{FFD700}%s\n{FFFFFF}Status: {4CAF50}À Venda\n{FFFFFF}Preço: {4CAF50}$%d\n{FFFFFF}Lucro: {FFD700}$%d/hora\n{9E9E9E}Use /comprarempresa", 
+            EmpresaInfo[empresaid][EmpresaNome], EmpresaInfo[empresaid][EmpresaPreco], EmpresaInfo[empresaid][EmpresaLucro]);
+        
+        EmpresaInfo[empresaid][EmpresaPickup] = CreatePickup(1274, 1, EmpresaInfo[empresaid][EmpresaX], EmpresaInfo[empresaid][EmpresaY], EmpresaInfo[empresaid][EmpresaZ], 0);
+    }
+    else
+    {
+        format(label_text, sizeof(label_text), 
+            "{FFD700}%s\n{FFFFFF}Dono: {9F2B8E}%s\n{FFFFFF}Status: {4CAF50}Funcionando\n{FFFFFF}Cofre: {4CAF50}$%d", 
+            EmpresaInfo[empresaid][EmpresaNome], EmpresaInfo[empresaid][EmpresaDono], EmpresaInfo[empresaid][EmpresaCofre]);
+        
+        EmpresaInfo[empresaid][EmpresaPickup] = CreatePickup(1275, 1, EmpresaInfo[empresaid][EmpresaX], EmpresaInfo[empresaid][EmpresaY], EmpresaInfo[empresaid][EmpresaZ], 0);
+    }
+    
+    EmpresaInfo[empresaid][EmpresaLabel] = Create3DTextLabel(label_text, COR_BRANCO, 
+        EmpresaInfo[empresaid][EmpresaX], EmpresaInfo[empresaid][EmpresaY], EmpresaInfo[empresaid][EmpresaZ] + 0.5, 10.0, 0, 0);
+}
+
+public SalvarEmpresa(empresaid)
+{
+    if(empresaid < 0 || empresaid >= MAX_EMPRESAS) return;
+    
+    new arquivo_empresa[64];
+    format(arquivo_empresa, sizeof(arquivo_empresa), PASTA_EMPRESAS, empresaid);
+    
+    DOF2_SetFloat(arquivo_empresa, "X", EmpresaInfo[empresaid][EmpresaX]);
+    DOF2_SetFloat(arquivo_empresa, "Y", EmpresaInfo[empresaid][EmpresaY]);
+    DOF2_SetFloat(arquivo_empresa, "Z", EmpresaInfo[empresaid][EmpresaZ]);
+    DOF2_SetFloat(arquivo_empresa, "IntX", EmpresaInfo[empresaid][EmpresaIntX]);
+    DOF2_SetFloat(arquivo_empresa, "IntY", EmpresaInfo[empresaid][EmpresaIntY]);
+    DOF2_SetFloat(arquivo_empresa, "IntZ", EmpresaInfo[empresaid][EmpresaIntZ]);
+    DOF2_SetInt(arquivo_empresa, "Interior", EmpresaInfo[empresaid][EmpresaInt]);
+    DOF2_SetInt(arquivo_empresa, "VirtualWorld", EmpresaInfo[empresaid][EmpresaVW]);
+    DOF2_SetString(arquivo_empresa, "Nome", EmpresaInfo[empresaid][EmpresaNome]);
+    DOF2_SetInt(arquivo_empresa, "Tipo", EmpresaInfo[empresaid][EmpresaTipo]);
+    DOF2_SetInt(arquivo_empresa, "Preco", EmpresaInfo[empresaid][EmpresaPreco]);
+    DOF2_SetString(arquivo_empresa, "Dono", EmpresaInfo[empresaid][EmpresaDono]);
+    DOF2_SetInt(arquivo_empresa, "Cofre", EmpresaInfo[empresaid][EmpresaCofre]);
+    DOF2_SetInt(arquivo_empresa, "Lucro", EmpresaInfo[empresaid][EmpresaLucro]);
+    DOF2_SetInt(arquivo_empresa, "Venda", EmpresaInfo[empresaid][EmpresaVenda]);
+}
+
+// ============== SISTEMA DE FACÇÕES COMPLETO ==============
+
+stock CarregarFaccoes()
+{
+    print("Carregando sistema de facções...");
+    
+    // Criar facções padrão se não existirem
+    if(!DOF2_FileExists("Servidor/faccoes_criadas.ini"))
+    {
+        CriarFaccoesPadrao();
+        DOF2_CreateFile("Servidor/faccoes_criadas.ini");
+        DOF2_SetInt("Servidor/faccoes_criadas.ini", "Criadas", 1);
+    }
+    
+    // Carregar facções existentes
+    new arquivo_faccao[64];
+    for(new i = 0; i < MAX_FACCOES; i++)
+    {
+        format(arquivo_faccao, sizeof(arquivo_faccao), PASTA_FACCOES, i);
+        if(DOF2_FileExists(arquivo_faccao))
+        {
+            DOF2_GetString(arquivo_faccao, "Nome", FaccaoInfo[i][FaccaoNome], 64);
+            DOF2_GetString(arquivo_faccao, "Tag", FaccaoInfo[i][FaccaoTag], 8);
+            FaccaoInfo[i][FaccaoTipo] = DOF2_GetInt(arquivo_faccao, "Tipo");
+            FaccaoInfo[i][FaccaoMembros] = DOF2_GetInt(arquivo_faccao, "Membros");
+            FaccaoInfo[i][FaccaoMaxMembros] = DOF2_GetInt(arquivo_faccao, "MaxMembros");
+            FaccaoInfo[i][FaccaoBank] = DOF2_GetInt(arquivo_faccao, "Bank");
+            DOF2_GetString(arquivo_faccao, "Lider", FaccaoInfo[i][FaccaoLider], MAX_PLAYER_NAME);
+            DOF2_GetString(arquivo_faccao, "SubLider", FaccaoInfo[i][FaccaoSubLider], MAX_PLAYER_NAME);
+            FaccaoInfo[i][FaccaoSpawnX] = DOF2_GetFloat(arquivo_faccao, "SpawnX");
+            FaccaoInfo[i][FaccaoSpawnY] = DOF2_GetFloat(arquivo_faccao, "SpawnY");
+            FaccaoInfo[i][FaccaoSpawnZ] = DOF2_GetFloat(arquivo_faccao, "SpawnZ");
+            FaccaoInfo[i][FaccaoAtiva] = DOF2_GetInt(arquivo_faccao, "Ativa");
+            
+            if(FaccaoInfo[i][FaccaoAtiva]) TotalFaccoes++;
+        }
+    }
+    
+    printf("Sistema de facções carregado: %d facções ativas!", TotalFaccoes);
+}
+
+stock CriarFaccoesPadrao()
+{
+    print("Criando facções padrão...");
+    
+    new faccoes_info[][80] = {
+        // Nome, Tag, Tipo, MaxMembros, SpawnX, SpawnY, SpawnZ
+        {"Policia Militar de Los Santos", "PMLS", "1", "20", "1568.5", "-1693.7", "13.0"},
+        {"Hospital de Los Santos", "HLS", "3", "15", "1172.0", "-1323.0", "15.0"},
+        {"Governo de Los Santos", "GOV", "0", "10", "1481.0", "-1740.0", "13.5"},
+        {"Grove Street Families", "GSF", "4", "25", "2495.0", "-1688.0", "13.3"},
+        {"Los Santos Vagos", "LSV", "4", "25", "2787.0", "-1926.0", "13.5"},
+        {"Ballas", "BAL", "4", "25", "2013.0", "-1717.0", "13.5"},
+        {"Aztecas", "AZT", "4", "25", "1412.0", "-886.0", "50.6"},
+        {"Mafia Italiana", "MAF", "4", "20", "1834.0", "-1682.0", "13.5"},
+        {"Yakuza", "YKZ", "4", "20", "2421.0", "-1509.0", "24.0"},
+        {"Taxistas Unidos", "TAXI", "0", "30", "1680.0", -2335.0", "13.5"}
+    };
+    
+    for(new i = 0; i < 10; i++)
+    {
+        new arquivo_faccao[64];
+        format(arquivo_faccao, sizeof(arquivo_faccao), PASTA_FACCOES, i);
+        
+        DOF2_CreateFile(arquivo_faccao);
+        DOF2_SetString(arquivo_faccao, "Nome", faccoes_info[i][0]);
+        DOF2_SetString(arquivo_faccao, "Tag", faccoes_info[i][1]);
+        DOF2_SetInt(arquivo_faccao, "Tipo", strval(faccoes_info[i][2]));
+        DOF2_SetInt(arquivo_faccao, "Membros", 0);
+        DOF2_SetInt(arquivo_faccao, "MaxMembros", strval(faccoes_info[i][3]));
+        DOF2_SetInt(arquivo_faccao, "Bank", 50000);
+        DOF2_SetString(arquivo_faccao, "Lider", "Ninguem");
+        DOF2_SetString(arquivo_faccao, "SubLider", "Ninguem");
+        DOF2_SetFloat(arquivo_faccao, "SpawnX", floatstr(faccoes_info[i][4]));
+        DOF2_SetFloat(arquivo_faccao, "SpawnY", floatstr(faccoes_info[i][5]));
+        DOF2_SetFloat(arquivo_faccao, "SpawnZ", floatstr(faccoes_info[i][6]));
+        DOF2_SetInt(arquivo_faccao, "Ativa", 1);
+        
+        // Definir valores no array
+        format(FaccaoInfo[i][FaccaoNome], 64, "%s", faccoes_info[i][0]);
+        format(FaccaoInfo[i][FaccaoTag], 8, "%s", faccoes_info[i][1]);
+        FaccaoInfo[i][FaccaoTipo] = strval(faccoes_info[i][2]);
+        FaccaoInfo[i][FaccaoMembros] = 0;
+        FaccaoInfo[i][FaccaoMaxMembros] = strval(faccoes_info[i][3]);
+        FaccaoInfo[i][FaccaoBank] = 50000;
+        format(FaccaoInfo[i][FaccaoLider], MAX_PLAYER_NAME, "Ninguem");
+        format(FaccaoInfo[i][FaccaoSubLider], MAX_PLAYER_NAME, "Ninguem");
+        FaccaoInfo[i][FaccaoSpawnX] = floatstr(faccoes_info[i][4]);
+        FaccaoInfo[i][FaccaoSpawnY] = floatstr(faccoes_info[i][5]);
+        FaccaoInfo[i][FaccaoSpawnZ] = floatstr(faccoes_info[i][6]);
+        FaccaoInfo[i][FaccaoAtiva] = 1;
+    }
+    
+    print("10 facções padrão criadas!");
+}
+
+// ============== SISTEMA DE VEÍCULOS COMPLETO ==============
+
+stock CarregarVeiculos()
+{
+    print("Carregando sistema de veículos...");
+    
+    CriarVeiculosPadrao();
+    
+    printf("Sistema de veículos carregado: %d veículos!", TotalVeiculos);
+}
+
+stock CriarVeiculosPadrao()
+{
+    print("Criando veículos padrão...");
+    
+    // Veículos civis
+    new veiculos_civis[][6] = {
+        // Modelo, X, Y, Z, Rotação, Cor1, Cor2
+        {400, 1541, -1630, 13, 0, 1, 1}, // Landstalker
+        {401, 1544, -1630, 13, 0, 3, 3}, // Bravura
+        {402, 1547, -1630, 13, 0, 6, 6}, // Buffalo
+        {404, 1550, -1630, 13, 0, 4, 4}, // Perennials
+        {405, 1553, -1630, 13, 0, 2, 2}, // Sentinel
+        {410, 1556, -1630, 13, 0, 5, 5}, // Manana
+        {411, 1559, -1630, 13, 0, 7, 7}, // Infernus
+        {412, 1562, -1630, 13, 0, 8, 8}, // Voodoo
+        {415, 1565, -1630, 13, 0, 9, 9}, // Cheetah
+        {418, 1568, -1630, 13, 0, 10, 10}, // Moonbeam
+        {419, 1571, -1630, 13, 0, 11, 11}, // Esperanto
+        {421, 1574, -1630, 13, 0, 12, 12}, // Washington
+        {422, 1577, -1630, 13, 0, 13, 13}, // Bobcat
+        {426, 1580, -1630, 13, 0, 14, 14}, // Premier
+        {436, 1583, -1630, 13, 0, 15, 15}, // Previon
+        {439, 1586, -1630, 13, 0, 16, 16}, // Stallion
+        {445, 1589, -1630, 13, 0, 17, 17}, // Admiral
+        {451, 1592, -1630, 13, 0, 18, 18}, // Turismo
+        {458, 1595, -1630, 13, 0, 19, 19}, // Solair
+        {466, 1598, -1630, 13, 0, 20, 20}, // Glendale
+        {467, 1601, -1630, 13, 0, 21, 21}, // Oceanic
+        {474, 1604, -1630, 13, 0, 22, 22}, // Hermes
+        {475, 1607, -1630, 13, 0, 23, 23}, // Sabre
+        {477, 1610, -1630, 13, 0, 24, 24}, // ZR-350
+        {478, 1613, -1630, 13, 0, 25, 25}, // Walton
+        {479, 1616, -1630, 13, 0, 26, 26}, // Regina
+        {480, 1619, -1630, 13, 0, 27, 27}, // Comet
+        {489, 1622, -1630, 13, 0, 28, 28}, // Rancher
+        {491, 1625, -1630, 13, 0, 29, 29}, // Virgo
+        {492, 1628, -1630, 13, 0, 30, 30}  // Greenwood
+    };
+    
+    // Veículos policiais
+    new veiculos_policia[][6] = {
+        {596, 1568, -1690, 13, 0, 1, 1}, // Police Car LS
+        {597, 1571, -1690, 13, 0, 1, 1}, // Police Car SF
+        {598, 1574, -1690, 13, 0, 1, 1}, // Police Car LV
+        {599, 1577, -1690, 13, 0, 1, 1}, // Police Ranger
+        {601, 1580, -1690, 13, 0, 1, 1}  // S.W.A.T. Tank
+    };
+    
+    // Veículos médicos
+    new veiculos_medicos[][6] = {
+        {416, 1172, -1320, 15, 90, 1, 3}, // Ambulance
+        {544, 1175, -1320, 15, 90, 1, 3}  // Fire Truck
+    };
+    
+    // Criar veículos civis
+    for(new i = 0; i < 30; i++)
+    {
+        new vehicleid = CreateVehicle(veiculos_civis[i][0], veiculos_civis[i][1], veiculos_civis[i][2], veiculos_civis[i][3], veiculos_civis[i][4], veiculos_civis[i][5], veiculos_civis[i][6], 300);
+        
+        VeiculoInfo[i][VeiculoModelo] = veiculos_civis[i][0];
+        VeiculoInfo[i][VeiculoX] = float(veiculos_civis[i][1]);
+        VeiculoInfo[i][VeiculoY] = float(veiculos_civis[i][2]);
+        VeiculoInfo[i][VeiculoZ] = float(veiculos_civis[i][3]);
+        VeiculoInfo[i][VeiculoRotacao] = float(veiculos_civis[i][4]);
+        VeiculoInfo[i][VeiculoCor1] = veiculos_civis[i][5];
+        VeiculoInfo[i][VeiculoCor2] = veiculos_civis[i][6];
+        VeiculoInfo[i][VeiculoGasolina] = 100;
+        VeiculoInfo[i][VeiculoKM] = 0;
+        format(VeiculoInfo[i][VeiculoDono], MAX_PLAYER_NAME, "Estado");
+        VeiculoInfo[i][VeiculoPreco] = 25000 + random(50000);
+        VeiculoInfo[i][VeiculoVenda] = 1;
+        VeiculoInfo[i][VeiculoFaccao] = -1;
+        VeiculoInfo[i][VeiculoEmprego] = -1;
+        VeiculoInfo[i][VeiculoID] = vehicleid;
+        TotalVeiculos++;
+    }
+    
+    // Criar veículos policiais
+    for(new i = 0; i < 5; i++)
+    {
+        new vehicleid = CreateVehicle(veiculos_policia[i][0], veiculos_policia[i][1], veiculos_policia[i][2], veiculos_policia[i][3], veiculos_policia[i][4], veiculos_policia[i][5], veiculos_policia[i][6], 300);
+        
+        new idx = 30 + i;
+        VeiculoInfo[idx][VeiculoModelo] = veiculos_policia[i][0];
+        VeiculoInfo[idx][VeiculoX] = float(veiculos_policia[i][1]);
+        VeiculoInfo[idx][VeiculoY] = float(veiculos_policia[i][2]);
+        VeiculoInfo[idx][VeiculoZ] = float(veiculos_policia[i][3]);
+        VeiculoInfo[idx][VeiculoRotacao] = float(veiculos_policia[i][4]);
+        VeiculoInfo[idx][VeiculoCor1] = veiculos_policia[i][5];
+        VeiculoInfo[idx][VeiculoCor2] = veiculos_policia[i][6];
+        VeiculoInfo[idx][VeiculoGasolina] = 100;
+        VeiculoInfo[idx][VeiculoKM] = 0;
+        format(VeiculoInfo[idx][VeiculoDono], MAX_PLAYER_NAME, "PMLS");
+        VeiculoInfo[idx][VeiculoPreco] = 0;
+        VeiculoInfo[idx][VeiculoVenda] = 0;
+        VeiculoInfo[idx][VeiculoFaccao] = 0; // Polícia
+        VeiculoInfo[idx][VeiculoEmprego] = 11; // Policial
+        VeiculoInfo[idx][VeiculoID] = vehicleid;
+        TotalVeiculos++;
+    }
+    
+    // Criar veículos médicos
+    for(new i = 0; i < 2; i++)
+    {
+        new vehicleid = CreateVehicle(veiculos_medicos[i][0], veiculos_medicos[i][1], veiculos_medicos[i][2], veiculos_medicos[i][3], veiculos_medicos[i][4], veiculos_medicos[i][5], veiculos_medicos[i][6], 300);
+        
+        new idx = 35 + i;
+        VeiculoInfo[idx][VeiculoModelo] = veiculos_medicos[i][0];
+        VeiculoInfo[idx][VeiculoX] = float(veiculos_medicos[i][1]);
+        VeiculoInfo[idx][VeiculoY] = float(veiculos_medicos[i][2]);
+        VeiculoInfo[idx][VeiculoZ] = float(veiculos_medicos[i][3]);
+        VeiculoInfo[idx][VeiculoRotacao] = float(veiculos_medicos[i][4]);
+        VeiculoInfo[idx][VeiculoCor1] = veiculos_medicos[i][5];
+        VeiculoInfo[idx][VeiculoCor2] = veiculos_medicos[i][6];
+        VeiculoInfo[idx][VeiculoGasolina] = 100;
+        VeiculoInfo[idx][VeiculoKM] = 0;
+        format(VeiculoInfo[idx][VeiculoDono], MAX_PLAYER_NAME, "HLS");
+        VeiculoInfo[idx][VeiculoPreco] = 0;
+        VeiculoInfo[idx][VeiculoVenda] = 0;
+        VeiculoInfo[idx][VeiculoFaccao] = 1; // Hospital
+        VeiculoInfo[idx][VeiculoEmprego] = 10; // Médico
+        VeiculoInfo[idx][VeiculoID] = vehicleid;
+        TotalVeiculos++;
+    }
+    
+    printf("%d veículos padrão criados!", TotalVeiculos);
+}
+
+// ============== SISTEMA DE SPAWN ==============
+
+stock ConfigurarSpawn(playerid)
+{
+    // Configurar spawn baseado na facção
+    if(PlayerInfo[playerid][FaccaoID] != -1)
+    {
+        new faccaoid = PlayerInfo[playerid][FaccaoID];
+        SetPlayerPos(playerid, FaccaoInfo[faccaoid][FaccaoSpawnX], FaccaoInfo[faccaoid][FaccaoSpawnY], FaccaoInfo[faccaoid][FaccaoSpawnZ]);
+    }
+    else
+    {
+        // Spawn padrão baseado na última posição
+        if(PlayerInfo[playerid][PosX] != 0.0 && PlayerInfo[playerid][PosY] != 0.0)
+        {
+            SetPlayerPos(playerid, PlayerInfo[playerid][PosX], PlayerInfo[playerid][PosY], PlayerInfo[playerid][PosZ]);
+            SetPlayerFacingAngle(playerid, PlayerInfo[playerid][PosR]);
+        }
+        else
+        {
+            // Spawn no centro de Los Santos
+            SetPlayerPos(playerid, 1529.6, -1691.2, 13.3);
+            SetPlayerFacingAngle(playerid, 90.0);
+        }
+    }
+}
+
+stock RestaurarEstadoPlayer(playerid)
+{
+    SetPlayerInterior(playerid, PlayerInfo[playerid][Interior]);
+    SetPlayerVirtualWorld(playerid, PlayerInfo[playerid][VirtualW]);
+    
+    SetPlayerHealth(playerid, PlayerInfo[playerid][VidaHP]);
+    SetPlayerArmour(playerid, PlayerInfo[playerid][ColeteHP]);
+    
+    ResetPlayerMoney(playerid);
+    GivePlayerMoney(playerid, PlayerInfo[playerid][Dinheiro]);
+    
+    SetPlayerSkin(playerid, PlayerInfo[playerid][Skin]);
+    
+    SetPlayerScore(playerid, PlayerInfo[playerid][Level]);
+}
+
+// ============== TODAS AS FUNÇÕES STOCK NECESSÁRIAS ==============
+
+stock GetPlayerNameEx(playerid)
+{
+    static name[MAX_PLAYER_NAME];
+    GetPlayerName(playerid, name, sizeof(name));
+    return name;
+}
+
+stock GetPlayerIP(playerid)
+{
+    static ip[16];
+    GetPlayerIp(playerid, ip, sizeof(ip));
+    return ip;
+}
+
+stock LimparChat(playerid, linhas)
+{
+    for(new i = 0; i < linhas; i++)
+    {
+        SCM(playerid, COR_BRANCO, " ");
+    }
+}
+
+stock ResetarVariaveisPlayer(playerid)
+{
+    // Reset de todas as variáveis do jogador
+    format(PlayerInfo[playerid][Senha], 32, "");
+    format(PlayerInfo[playerid][Email], 64, "");
+    PlayerInfo[playerid][Dinheiro] = 5000;
+    PlayerInfo[playerid][Level] = 1;
+    PlayerInfo[playerid][Experiencia] = 0;
+    PlayerInfo[playerid][Skin] = 26;
+    PlayerInfo[playerid][Genero] = -1;
+    PlayerInfo[playerid][Admin] = 0;
+    PlayerInfo[playerid][Helper] = 0;
+    PlayerInfo[playerid][Vip] = 0;
+    PlayerInfo[playerid][Idade] = 18;
+    PlayerInfo[playerid][Altura] = 175;
+    PlayerInfo[playerid][Peso] = 70;
+    PlayerInfo[playerid][Emprego] = 0;
+    PlayerInfo[playerid][EmpregoLevel] = 1;
+    PlayerInfo[playerid][Salario] = 0;
+    PlayerInfo[playerid][UltimoPagamento] = 0;
+    format(PlayerInfo[playerid][Titulo], 64, "Cidadão Comum");
+    format(PlayerInfo[playerid][Nascimento], 32, "01/01/1990");
+    format(PlayerInfo[playerid][Nacionalidade], 32, "Brasileira");
+    format(PlayerInfo[playerid][EstadoCivil], 32, "Solteiro");
+    PlayerInfo[playerid][Interior] = 0;
+    PlayerInfo[playerid][VirtualW] = 0;
+    PlayerInfo[playerid][VidaHP] = 100.0;
+    PlayerInfo[playerid][ColeteHP] = 0.0;
+    PlayerInfo[playerid][PosX] = 0.0;
+    PlayerInfo[playerid][PosY] = 0.0;
+    PlayerInfo[playerid][PosZ] = 0.0;
+    PlayerInfo[playerid][PosR] = 0.0;
+    PlayerInfo[playerid][HorasJogadas] = 0;
+    PlayerInfo[playerid][MinutosJogados] = 0;
+    PlayerInfo[playerid][Mortes] = 0;
+    PlayerInfo[playerid][Kills] = 0;
+    PlayerInfo[playerid][TempoPreso] = 0;
+    PlayerInfo[playerid][TempoPrisao] = 0;
+    PlayerInfo[playerid][Crimes] = 0;
+    PlayerInfo[playerid][Multas] = 0;
+    PlayerInfo[playerid][Avisos] = 0;
+    PlayerInfo[playerid][ContaBanco] = 0;
+    format(PlayerInfo[playerid][SenhaBanco], 8, "1234");
+    PlayerInfo[playerid][CasaID] = -1;
+    PlayerInfo[playerid][CasaChave] = 0;
+    PlayerInfo[playerid][EmpresaID] = -1;
+    PlayerInfo[playerid][EmpresaDono] = 0;
+    PlayerInfo[playerid][FaccaoID] = -1;
+    PlayerInfo[playerid][FaccaoRank] = 0;
+    PlayerInfo[playerid][VeiculoSlot1] = -1;
+    PlayerInfo[playerid][VeiculoSlot2] = -1;
+    PlayerInfo[playerid][VeiculoSlot3] = -1;
+    PlayerInfo[playerid][LicencaArmas] = 0;
+    PlayerInfo[playerid][LicencaVoo] = 0;
+    PlayerInfo[playerid][LicencaBarco] = 0;
+    PlayerInfo[playerid][LicencaVeiculo] = 0;
+    PlayerInfo[playerid][Maconha] = 0;
+    PlayerInfo[playerid][Cocaina] = 0;
+    PlayerInfo[playerid][Crack] = 0;
+    PlayerInfo[playerid][ProcuradoNivel] = 0;
+    PlayerInfo[playerid][ProcuradoTempo] = 0;
+    PlayerInfo[playerid][MensagensPrivadas] = 1;
+    PlayerInfo[playerid][SomAtivado] = 1;
+    PlayerInfo[playerid][ChatGlobal] = 1;
+    
+    // Reset variáveis temporárias
+    format(VSenha[playerid], 32, "");
+    format(VEmail[playerid], 64, "");
+    VGenero[playerid] = -1;
+    VIdade[playerid] = 0;
+    TentativasSenha[playerid] = 0;
+    
+    // Reset estado
+    VerificarLogin[playerid] = false;
+    EstaRegistrado[playerid] = false;
+    TextDrawsLoginCriados[playerid] = false;
+    TextDrawsRGCriados[playerid] = false;
+    TextDrawsHUDCriados[playerid] = false;
+    
+    // Reset sistema anti-flood
+    UltimaMensagem[playerid] = 0;
+    MensagensEnviadas[playerid] = 0;
+    
+    // Reset títulos
+    for(new i = 0; i < sizeof(ListaTitulos); i++)
+    {
+        TitulosDesbloqueados[playerid][i] = 0;
+    }
+    TitulosDesbloqueados[playerid][0] = 1; // Cidadão Comum
+}
+
+stock InicializarSistemas()
+{
+    print("Inicializando todos os sistemas...");
+    
+    // Reset de arrays
+    for(new i = 0; i < MAX_CASAS; i++)
+    {
+        CasaInfo[i][CasaX] = 0.0;
+        CasaInfo[i][CasaY] = 0.0;
+        CasaInfo[i][CasaZ] = 0.0;
+        CasaInfo[i][CasaIntX] = 0.0;
+        CasaInfo[i][CasaIntY] = 0.0;
+        CasaInfo[i][CasaIntZ] = 0.0;
+        CasaInfo[i][CasaInt] = 0;
+        CasaInfo[i][CasaVW] = 0;
+        CasaInfo[i][CasaPreco] = 0;
+        format(CasaInfo[i][CasaDono], MAX_PLAYER_NAME, "Ninguem");
+        CasaInfo[i][CasaAluguel] = 0;
+        CasaInfo[i][CasaFechada] = 0;
+        CasaInfo[i][CasaVenda] = 1;
+        CasaInfo[i][CasaLabel] = Text3D:INVALID_3DTEXT_ID;
+        CasaInfo[i][CasaPickup] = -1;
+    }
+    
+    for(new i = 0; i < MAX_EMPRESAS; i++)
+    {
+        EmpresaInfo[i][EmpresaX] = 0.0;
+        EmpresaInfo[i][EmpresaY] = 0.0;
+        EmpresaInfo[i][EmpresaZ] = 0.0;
+        EmpresaInfo[i][EmpresaIntX] = 0.0;
+        EmpresaInfo[i][EmpresaIntY] = 0.0;
+        EmpresaInfo[i][EmpresaIntZ] = 0.0;
+        EmpresaInfo[i][EmpresaInt] = 0;
+        EmpresaInfo[i][EmpresaVW] = 0;
+        format(EmpresaInfo[i][EmpresaNome], 64, "Empresa %d", i);
+        EmpresaInfo[i][EmpresaTipo] = 0;
+        EmpresaInfo[i][EmpresaPreco] = 100000;
+        format(EmpresaInfo[i][EmpresaDono], MAX_PLAYER_NAME, "Estado");
+        EmpresaInfo[i][EmpresaCofre] = 0;
+        EmpresaInfo[i][EmpresaLucro] = 0;
+        EmpresaInfo[i][EmpresaVenda] = 1;
+        EmpresaInfo[i][EmpresaLabel] = Text3D:INVALID_3DTEXT_ID;
+        EmpresaInfo[i][EmpresaPickup] = -1;
+    }
+    
+    for(new i = 0; i < MAX_FACCOES; i++)
+    {
+        format(FaccaoInfo[i][FaccaoNome], 64, "Faccao %d", i);
+        format(FaccaoInfo[i][FaccaoTag], 8, "F%d", i);
+        FaccaoInfo[i][FaccaoTipo] = 0;
+        FaccaoInfo[i][FaccaoMembros] = 0;
+        FaccaoInfo[i][FaccaoMaxMembros] = 50;
+        FaccaoInfo[i][FaccaoBank] = 50000;
+        format(FaccaoInfo[i][FaccaoLider], MAX_PLAYER_NAME, "Ninguem");
+        format(FaccaoInfo[i][FaccaoSubLider], MAX_PLAYER_NAME, "Ninguem");
+        FaccaoInfo[i][FaccaoSpawnX] = 1529.6;
+        FaccaoInfo[i][FaccaoSpawnY] = -1691.2;
+        FaccaoInfo[i][FaccaoSpawnZ] = 13.3;
+        FaccaoInfo[i][FaccaoAtiva] = 0;
+    }
+    
+    for(new i = 0; i < MAX_SPAWN_VEICULOS; i++)
+    {
+        VeiculoInfo[i][VeiculoModelo] = 0;
+        VeiculoInfo[i][VeiculoX] = 0.0;
+        VeiculoInfo[i][VeiculoY] = 0.0;
+        VeiculoInfo[i][VeiculoZ] = 0.0;
+        VeiculoInfo[i][VeiculoRotacao] = 0.0;
+        VeiculoInfo[i][VeiculoCor1] = 1;
+        VeiculoInfo[i][VeiculoCor2] = 1;
+        VeiculoInfo[i][VeiculoGasolina] = 100;
+        VeiculoInfo[i][VeiculoKM] = 0;
+        format(VeiculoInfo[i][VeiculoDono], MAX_PLAYER_NAME, "Estado");
+        VeiculoInfo[i][VeiculoPreco] = 25000;
+        VeiculoInfo[i][VeiculoVenda] = 1;
+        VeiculoInfo[i][VeiculoFaccao] = -1;
+        VeiculoInfo[i][VeiculoEmprego] = -1;
+        VeiculoInfo[i][VeiculoID] = INVALID_VEHICLE_ID;
+    }
+    
+    print("Sistemas inicializados com sucesso!");
+}
+
+stock MostrarTelaLoginModerna(playerid)
+{
+    if(TextDrawsLoginCriados[playerid])
+    {
+        EsconderTextdrawsLogin(playerid);
+    }
+    
+    CriarTextdrawsLogin(playerid);
+    
+    // Mostrar todos os textdraws do login
+    for(new i = 0; i < MAX_LOGIN_TEXTDRAWS; i++)
+    {
+        if(LoginTD[playerid][i] != INVALID_PLAYER_TEXT_DRAW)
+        {
+            PlayerTextDrawShow(playerid, LoginTD[playerid][i]);
+        }
+    }
+    
+    // Configurar texto específico para login
+    PlayerTextDrawSetString(playerid, LoginTD[playerid][1], "LOGIN");
+    PlayerTextDrawSetString(playerid, LoginTD[playerid][2], "BEM-VINDO DE VOLTA!");
+    PlayerTextDrawSetString(playerid, LoginTD[playerid][3], "Digite sua senha para acessar sua conta");
+    PlayerTextDrawSetString(playerid, LoginTD[playerid][7], "ENTRAR");
+    
+    PlayerTextDrawShow(playerid, LoginTD[playerid][1]);
+    PlayerTextDrawShow(playerid, LoginTD[playerid][2]);
+    PlayerTextDrawShow(playerid, LoginTD[playerid][3]);
+    PlayerTextDrawShow(playerid, LoginTD[playerid][7]);
+}
+
+stock MostrarTelaRegistroModerna(playerid)
+{
+    if(TextDrawsLoginCriados[playerid])
+    {
+        EsconderTextdrawsLogin(playerid);
+    }
+    
+    CriarTextdrawsLogin(playerid);
+    
+    // Mostrar todos os textdraws do registro
+    for(new i = 0; i < MAX_LOGIN_TEXTDRAWS; i++)
+    {
+        if(LoginTD[playerid][i] != INVALID_PLAYER_TEXT_DRAW)
+        {
+            PlayerTextDrawShow(playerid, LoginTD[playerid][i]);
+        }
+    }
+    
+    // Configurar texto específico para registro
+    PlayerTextDrawSetString(playerid, LoginTD[playerid][1], "REGISTRO");
+    PlayerTextDrawSetString(playerid, LoginTD[playerid][2], "BEM-VINDO AO SERVIDOR!");
+    PlayerTextDrawSetString(playerid, LoginTD[playerid][3], "Crie uma conta para comecar a jogar");
+    PlayerTextDrawSetString(playerid, LoginTD[playerid][7], "REGISTRAR");
+    
+    PlayerTextDrawShow(playerid, LoginTD[playerid][1]);
+    PlayerTextDrawShow(playerid, LoginTD[playerid][2]);
+    PlayerTextDrawShow(playerid, LoginTD[playerid][3]);
+    PlayerTextDrawShow(playerid, LoginTD[playerid][7]);
+}
+
+stock CriarTextdrawsLogin(playerid)
+{
+    if(TextDrawsLoginCriados[playerid]) return 1;
+    
+    // Background principal
+    LoginTD[playerid][0] = CreatePlayerTextDraw(playerid, 0.0, 0.0, "mdl-2000:black");
+    PlayerTextDrawLetterSize(playerid, LoginTD[playerid][0], 0.0, 0.0);
+    PlayerTextDrawTextSize(playerid, LoginTD[playerid][0], 640.0, 480.0);
+    PlayerTextDrawAlignment(playerid, LoginTD[playerid][0], 1);
+    PlayerTextDrawColor(playerid, LoginTD[playerid][0], COR_FUNDO);
+    PlayerTextDrawUseBox(playerid, LoginTD[playerid][0], 1);
+    PlayerTextDrawBoxColor(playerid, LoginTD[playerid][0], COR_FUNDO);
+    PlayerTextDrawSetShadow(playerid, LoginTD[playerid][0], 0);
+    PlayerTextDrawSetOutline(playerid, LoginTD[playerid][0], 0);
+    PlayerTextDrawBackgroundColor(playerid, LoginTD[playerid][0], 255);
+    PlayerTextDrawFont(playerid, LoginTD[playerid][0], 5);
+    PlayerTextDrawSetProportional(playerid, LoginTD[playerid][0], 0);
+    PlayerTextDrawSetShadow(playerid, LoginTD[playerid][0], 0);
+    
+    // Título principal
+    LoginTD[playerid][1] = CreatePlayerTextDraw(playerid, 320.0, 120.0, "LOGIN");
+    PlayerTextDrawLetterSize(playerid, LoginTD[playerid][1], 0.8, 3.2);
+    PlayerTextDrawAlignment(playerid, LoginTD[playerid][1], 2);
+    PlayerTextDrawColor(playerid, LoginTD[playerid][1], COR_PRINCIPAL);
+    PlayerTextDrawSetShadow(playerid, LoginTD[playerid][1], 1);
+    PlayerTextDrawSetOutline(playerid, LoginTD[playerid][1], 0);
+    PlayerTextDrawBackgroundColor(playerid, LoginTD[playerid][1], 255);
+    PlayerTextDrawFont(playerid, LoginTD[playerid][1], 1);
+    PlayerTextDrawSetProportional(playerid, LoginTD[playerid][1], 1);
+    
+    // Subtítulo
+    LoginTD[playerid][2] = CreatePlayerTextDraw(playerid, 320.0, 160.0, "BEM-VINDO DE VOLTA!");
+    PlayerTextDrawLetterSize(playerid, LoginTD[playerid][2], 0.3, 1.2);
+    PlayerTextDrawAlignment(playerid, LoginTD[playerid][2], 2);
+    PlayerTextDrawColor(playerid, LoginTD[playerid][2], COR_BRANCO);
+    PlayerTextDrawSetShadow(playerid, LoginTD[playerid][2], 1);
+    PlayerTextDrawSetOutline(playerid, LoginTD[playerid][2], 0);
+    PlayerTextDrawBackgroundColor(playerid, LoginTD[playerid][2], 255);
+    PlayerTextDrawFont(playerid, LoginTD[playerid][2], 1);
+    PlayerTextDrawSetProportional(playerid, LoginTD[playerid][2], 1);
+    
+    // Descrição
+    LoginTD[playerid][3] = CreatePlayerTextDraw(playerid, 320.0, 180.0, "Digite sua senha para acessar sua conta");
+    PlayerTextDrawLetterSize(playerid, LoginTD[playerid][3], 0.25, 1.0);
+    PlayerTextDrawAlignment(playerid, LoginTD[playerid][3], 2);
+    PlayerTextDrawColor(playerid, LoginTD[playerid][3], COR_CINZA);
+    PlayerTextDrawSetShadow(playerid, LoginTD[playerid][3], 0);
+    PlayerTextDrawSetOutline(playerid, LoginTD[playerid][3], 0);
+    PlayerTextDrawBackgroundColor(playerid, LoginTD[playerid][3], 255);
+    PlayerTextDrawFont(playerid, LoginTD[playerid][3], 1);
+    PlayerTextDrawSetProportional(playerid, LoginTD[playerid][3], 1);
+    
+    // Box da senha
+    LoginTD[playerid][4] = CreatePlayerTextDraw(playerid, 200.0, 220.0, "mdl-2000:white");
+    PlayerTextDrawLetterSize(playerid, LoginTD[playerid][4], 0.0, 0.0);
+    PlayerTextDrawTextSize(playerid, LoginTD[playerid][4], 440.0, 30.0);
+    PlayerTextDrawAlignment(playerid, LoginTD[playerid][4], 1);
+    PlayerTextDrawColor(playerid, LoginTD[playerid][4], COR_BRANCO);
+    PlayerTextDrawUseBox(playerid, LoginTD[playerid][4], 1);
+    PlayerTextDrawBoxColor(playerid, LoginTD[playerid][4], 0x22222255);
+    PlayerTextDrawSetShadow(playerid, LoginTD[playerid][4], 0);
+    PlayerTextDrawSetOutline(playerid, LoginTD[playerid][4], 0);
+    PlayerTextDrawBackgroundColor(playerid, LoginTD[playerid][4], 255);
+    PlayerTextDrawFont(playerid, LoginTD[playerid][4], 5);
+    PlayerTextDrawSetProportional(playerid, LoginTD[playerid][4], 0);
+    PlayerTextDrawSetShadow(playerid, LoginTD[playerid][4], 0);
+    PlayerTextDrawSetSelectable(playerid, LoginTD[playerid][4], 1);
+    
+    // Campo de senha clicável
+    LoginTD[playerid][5] = CreatePlayerTextDraw(playerid, 210.0, 227.0, "Clique para digitar a senha");
+    PlayerTextDrawLetterSize(playerid, LoginTD[playerid][5], 0.22, 1.0);
+    PlayerTextDrawAlignment(playerid, LoginTD[playerid][5], 1);
+    PlayerTextDrawColor(playerid, LoginTD[playerid][5], COR_CINZA);
+    PlayerTextDrawSetShadow(playerid, LoginTD[playerid][5], 0);
+    PlayerTextDrawSetOutline(playerid, LoginTD[playerid][5], 0);
+    PlayerTextDrawBackgroundColor(playerid, LoginTD[playerid][5], 255);
+    PlayerTextDrawFont(playerid, LoginTD[playerid][5], 1);
+    PlayerTextDrawSetProportional(playerid, LoginTD[playerid][5], 1);
+    PlayerTextDrawSetSelectable(playerid, LoginTD[playerid][5], 1);
+    
+    // Texto da senha (oculto)
+    LoginTD[playerid][6] = CreatePlayerTextDraw(playerid, 210.0, 227.0, "");
+    PlayerTextDrawLetterSize(playerid, LoginTD[playerid][6], 0.22, 1.0);
+    PlayerTextDrawAlignment(playerid, LoginTD[playerid][6], 1);
+    PlayerTextDrawColor(playerid, LoginTD[playerid][6], COR_BRANCO);
+    PlayerTextDrawSetShadow(playerid, LoginTD[playerid][6], 0);
+    PlayerTextDrawSetOutline(playerid, LoginTD[playerid][6], 0);
+    PlayerTextDrawBackgroundColor(playerid, LoginTD[playerid][6], 255);
+    PlayerTextDrawFont(playerid, LoginTD[playerid][6], 1);
+    PlayerTextDrawSetProportional(playerid, LoginTD[playerid][6], 1);
+    
+    // Botão entrar/registrar background
+    LoginTD[playerid][7] = CreatePlayerTextDraw(playerid, 270.0, 280.0, "mdl-2000:white");
+    PlayerTextDrawLetterSize(playerid, LoginTD[playerid][7], 0.0, 0.0);
+    PlayerTextDrawTextSize(playerid, LoginTD[playerid][7], 100.0, 35.0);
+    PlayerTextDrawAlignment(playerid, LoginTD[playerid][7], 1);
+    PlayerTextDrawColor(playerid, LoginTD[playerid][7], COR_PRINCIPAL);
+    PlayerTextDrawUseBox(playerid, LoginTD[playerid][7], 1);
+    PlayerTextDrawBoxColor(playerid, LoginTD[playerid][7], COR_PRINCIPAL);
+    PlayerTextDrawSetShadow(playerid, LoginTD[playerid][7], 0);
+    PlayerTextDrawSetOutline(playerid, LoginTD[playerid][7], 0);
+    PlayerTextDrawBackgroundColor(playerid, LoginTD[playerid][7], 255);
+    PlayerTextDrawFont(playerid, LoginTD[playerid][7], 5);
+    PlayerTextDrawSetProportional(playerid, LoginTD[playerid][7], 0);
+    PlayerTextDrawSetShadow(playerid, LoginTD[playerid][7], 0);
+    PlayerTextDrawSetSelectable(playerid, LoginTD[playerid][7], 1);
+    
+    // Texto do botão
+    LoginTD[playerid][8] = CreatePlayerTextDraw(playerid, 320.0, 287.0, "ENTRAR");
+    PlayerTextDrawLetterSize(playerid, LoginTD[playerid][8], 0.3, 1.4);
+    PlayerTextDrawAlignment(playerid, LoginTD[playerid][8], 2);
+    PlayerTextDrawColor(playerid, LoginTD[playerid][8], COR_BRANCO);
+    PlayerTextDrawSetShadow(playerid, LoginTD[playerid][8], 0);
+    PlayerTextDrawSetOutline(playerid, LoginTD[playerid][8], 0);
+    PlayerTextDrawBackgroundColor(playerid, LoginTD[playerid][8], 255);
+    PlayerTextDrawFont(playerid, LoginTD[playerid][8], 1);
+    PlayerTextDrawSetProportional(playerid, LoginTD[playerid][8], 1);
+    PlayerTextDrawSetSelectable(playerid, LoginTD[playerid][8], 1);
+    
+    // Credits
+    LoginTD[playerid][9] = CreatePlayerTextDraw(playerid, 320.0, 420.0, "Roleplay Gamemode by BACTERIA - v1.0");
+    PlayerTextDrawLetterSize(playerid, LoginTD[playerid][9], 0.2, 0.8);
+    PlayerTextDrawAlignment(playerid, LoginTD[playerid][9], 2);
+    PlayerTextDrawColor(playerid, LoginTD[playerid][9], COR_CINZA);
+    PlayerTextDrawSetShadow(playerid, LoginTD[playerid][9], 0);
+    PlayerTextDrawSetOutline(playerid, LoginTD[playerid][9], 0);
+    PlayerTextDrawBackgroundColor(playerid, LoginTD[playerid][9], 255);
+    PlayerTextDrawFont(playerid, LoginTD[playerid][9], 1);
+    PlayerTextDrawSetProportional(playerid, LoginTD[playerid][9], 1);
+    
+    TextDrawsLoginCriados[playerid] = true;
+    return 1;
+}
+
+stock EsconderTextdrawsLogin(playerid)
+{
+    if(!TextDrawsLoginCriados[playerid]) return 0;
+    
+    for(new i = 0; i < MAX_LOGIN_TEXTDRAWS; i++)
+    {
+        if(LoginTD[playerid][i] != INVALID_PLAYER_TEXT_DRAW)
+        {
+            PlayerTextDrawHide(playerid, LoginTD[playerid][i]);
+        }
+    }
+    return 1;
+}
+
+stock DestruirTextdrawsLogin(playerid)
+{
+    if(!TextDrawsLoginCriados[playerid]) return 0;
+    
+    for(new i = 0; i < MAX_LOGIN_TEXTDRAWS; i++)
+    {
+        if(LoginTD[playerid][i] != INVALID_PLAYER_TEXT_DRAW)
+        {
+            PlayerTextDrawDestroy(playerid, LoginTD[playerid][i]);
+            LoginTD[playerid][i] = INVALID_PLAYER_TEXT_DRAW;
+        }
+    }
+    
+    TextDrawsLoginCriados[playerid] = false;
+    return 1;
+}
+
+stock CriarConta(playerid)
+{
+    format(arquivo, sizeof(arquivo), PASTA_CONTAS, GetPlayerNameEx(playerid));
+    
+    DOF2_CreateFile(arquivo);
+    DOF2_SetString(arquivo, "Senha", VSenha[playerid]);
+    DOF2_SetString(arquivo, "Email", VEmail[playerid]);
+    DOF2_SetInt(arquivo, "Dinheiro", 5000);
+    DOF2_SetInt(arquivo, "Level", 1);
+    DOF2_SetInt(arquivo, "Experiencia", 0);
+    DOF2_SetInt(arquivo, "Skin", (VGenero[playerid] == 0) ? 26 : 56);
+    DOF2_SetInt(arquivo, "Genero", VGenero[playerid]);
+    DOF2_SetInt(arquivo, "Admin", 0);
+    DOF2_SetInt(arquivo, "Helper", 0);
+    DOF2_SetInt(arquivo, "Vip", 0);
+    DOF2_SetInt(arquivo, "Idade", VIdade[playerid]);
+    DOF2_SetInt(arquivo, "Altura", 175);
+    DOF2_SetInt(arquivo, "Peso", 70);
+    DOF2_SetInt(arquivo, "Emprego", 0);
+    DOF2_SetInt(arquivo, "EmpregoLevel", 1);
+    DOF2_SetInt(arquivo, "Salario", 0);
+    DOF2_SetInt(arquivo, "UltimoPagamento", gettime());
+    DOF2_SetString(arquivo, "Titulo", "Cidadão Comum");
+    DOF2_SetString(arquivo, "Nascimento", "01/01/1990");
+    DOF2_SetString(arquivo, "Nacionalidade", "Brasileira");
+    DOF2_SetString(arquivo, "EstadoCivil", "Solteiro");
+    DOF2_SetInt(arquivo, "Interior", 0);
+    DOF2_SetInt(arquivo, "VirtualW", 0);
+    DOF2_SetFloat(arquivo, "VidaHP", 100.0);
+    DOF2_SetFloat(arquivo, "ColeteHP", 0.0);
+    DOF2_SetFloat(arquivo, "PosX", 1529.6);
+    DOF2_SetFloat(arquivo, "PosY", -1691.2);
+    DOF2_SetFloat(arquivo, "PosZ", 13.3);
+    DOF2_SetFloat(arquivo, "PosR", 90.0);
+    DOF2_SetInt(arquivo, "HorasJogadas", 0);
+    DOF2_SetInt(arquivo, "MinutosJogados", 0);
+    DOF2_SetInt(arquivo, "Mortes", 0);
+    DOF2_SetInt(arquivo, "Kills", 0);
+    DOF2_SetInt(arquivo, "TempoPreso", 0);
+    DOF2_SetInt(arquivo, "TempoPrisao", 0);
+    DOF2_SetInt(arquivo, "Crimes", 0);
+    DOF2_SetInt(arquivo, "Multas", 0);
+    DOF2_SetInt(arquivo, "Avisos", 0);
+    DOF2_SetInt(arquivo, "ContaBanco", random(9999999) + 1000000);
+    DOF2_SetString(arquivo, "SenhaBanco", "1234");
+    DOF2_SetInt(arquivo, "CasaID", -1);
+    DOF2_SetInt(arquivo, "CasaChave", 0);
+    DOF2_SetInt(arquivo, "EmpresaID", -1);
+    DOF2_SetInt(arquivo, "EmpresaDono", 0);
+    DOF2_SetInt(arquivo, "FaccaoID", -1);
+    DOF2_SetInt(arquivo, "FaccaoRank", 0);
+    DOF2_SetInt(arquivo, "VeiculoSlot1", -1);
+    DOF2_SetInt(arquivo, "VeiculoSlot2", -1);
+    DOF2_SetInt(arquivo, "VeiculoSlot3", -1);
+    DOF2_SetInt(arquivo, "LicencaArmas", 0);
+    DOF2_SetInt(arquivo, "LicencaVoo", 0);
+    DOF2_SetInt(arquivo, "LicencaBarco", 0);
+    DOF2_SetInt(arquivo, "LicencaVeiculo", 0);
+    DOF2_SetInt(arquivo, "Maconha", 0);
+    DOF2_SetInt(arquivo, "Cocaina", 0);
+    DOF2_SetInt(arquivo, "Crack", 0);
+    DOF2_SetInt(arquivo, "ProcuradoNivel", 0);
+    DOF2_SetInt(arquivo, "ProcuradoTempo", 0);
+    DOF2_SetInt(arquivo, "MensagensPrivadas", 1);
+    DOF2_SetInt(arquivo, "SomAtivado", 1);
+    DOF2_SetInt(arquivo, "ChatGlobal", 1);
+    DOF2_SaveFile();
+    
+    // Carregar dados para o jogador
+    CarregarDadosPlayer(playerid);
+    
+    SCM(playerid, COR_VERDE, "{4CAF50}» {FFFFFF}Conta criada com sucesso! Bem-vindo ao servidor!");
+    printf("[REGISTRO] %s (%d) criou uma nova conta. IP: %s", GetPlayerNameEx(playerid), playerid, GetPlayerIP(playerid));
+}
+
+stock CarregarDadosPlayer(playerid)
+{
+    format(arquivo, sizeof(arquivo), PASTA_CONTAS, GetPlayerNameEx(playerid));
+    
+    if(!DOF2_FileExists(arquivo))
+    {
+        printf("ERRO: Tentativa de carregar dados de conta inexistente!");
+        return 0;
+    }
+    
+    format(PlayerInfo[playerid][Senha], 32, "%s", DOF2_GetString(arquivo, "Senha"));
+    format(PlayerInfo[playerid][Email], 64, "%s", DOF2_GetString(arquivo, "Email"));
+    PlayerInfo[playerid][Dinheiro] = DOF2_GetInt(arquivo, "Dinheiro");
+    PlayerInfo[playerid][Level] = DOF2_GetInt(arquivo, "Level");
+    PlayerInfo[playerid][Experiencia] = DOF2_GetInt(arquivo, "Experiencia");
+    PlayerInfo[playerid][Skin] = DOF2_GetInt(arquivo, "Skin");
+    PlayerInfo[playerid][Genero] = DOF2_GetInt(arquivo, "Genero");
+    PlayerInfo[playerid][Admin] = DOF2_GetInt(arquivo, "Admin");
+    PlayerInfo[playerid][Helper] = DOF2_GetInt(arquivo, "Helper");
+    PlayerInfo[playerid][Vip] = DOF2_GetInt(arquivo, "Vip");
+    PlayerInfo[playerid][Idade] = DOF2_GetInt(arquivo, "Idade");
+    PlayerInfo[playerid][Altura] = DOF2_GetInt(arquivo, "Altura");
+    PlayerInfo[playerid][Peso] = DOF2_GetInt(arquivo, "Peso");
+    PlayerInfo[playerid][Emprego] = DOF2_GetInt(arquivo, "Emprego");
+    PlayerInfo[playerid][EmpregoLevel] = DOF2_GetInt(arquivo, "EmpregoLevel");
+    PlayerInfo[playerid][Salario] = DOF2_GetInt(arquivo, "Salario");
+    PlayerInfo[playerid][UltimoPagamento] = DOF2_GetInt(arquivo, "UltimoPagamento");
+    format(PlayerInfo[playerid][Titulo], 64, "%s", DOF2_GetString(arquivo, "Titulo"));
+    format(PlayerInfo[playerid][Nascimento], 32, "%s", DOF2_GetString(arquivo, "Nascimento"));
+    format(PlayerInfo[playerid][Nacionalidade], 32, "%s", DOF2_GetString(arquivo, "Nacionalidade"));
+    format(PlayerInfo[playerid][EstadoCivil], 32, "%s", DOF2_GetString(arquivo, "EstadoCivil"));
+    PlayerInfo[playerid][Interior] = DOF2_GetInt(arquivo, "Interior");
+    PlayerInfo[playerid][VirtualW] = DOF2_GetInt(arquivo, "VirtualW");
+    PlayerInfo[playerid][VidaHP] = DOF2_GetFloat(arquivo, "VidaHP");
+    PlayerInfo[playerid][ColeteHP] = DOF2_GetFloat(arquivo, "ColeteHP");
+    PlayerInfo[playerid][PosX] = DOF2_GetFloat(arquivo, "PosX");
+    PlayerInfo[playerid][PosY] = DOF2_GetFloat(arquivo, "PosY");
+    PlayerInfo[playerid][PosZ] = DOF2_GetFloat(arquivo, "PosZ");
+    PlayerInfo[playerid][PosR] = DOF2_GetFloat(arquivo, "PosR");
+    PlayerInfo[playerid][HorasJogadas] = DOF2_GetInt(arquivo, "HorasJogadas");
+    PlayerInfo[playerid][MinutosJogados] = DOF2_GetInt(arquivo, "MinutosJogados");
+    PlayerInfo[playerid][Mortes] = DOF2_GetInt(arquivo, "Mortes");
+    PlayerInfo[playerid][Kills] = DOF2_GetInt(arquivo, "Kills");
+    PlayerInfo[playerid][TempoPreso] = DOF2_GetInt(arquivo, "TempoPreso");
+    PlayerInfo[playerid][TempoPrisao] = DOF2_GetInt(arquivo, "TempoPrisao");
+    PlayerInfo[playerid][Crimes] = DOF2_GetInt(arquivo, "Crimes");
+    PlayerInfo[playerid][Multas] = DOF2_GetInt(arquivo, "Multas");
+    PlayerInfo[playerid][Avisos] = DOF2_GetInt(arquivo, "Avisos");
+    PlayerInfo[playerid][ContaBanco] = DOF2_GetInt(arquivo, "ContaBanco");
+    format(PlayerInfo[playerid][SenhaBanco], 8, "%s", DOF2_GetString(arquivo, "SenhaBanco"));
+    PlayerInfo[playerid][CasaID] = DOF2_GetInt(arquivo, "CasaID");
+    PlayerInfo[playerid][CasaChave] = DOF2_GetInt(arquivo, "CasaChave");
+    PlayerInfo[playerid][EmpresaID] = DOF2_GetInt(arquivo, "EmpresaID");
+    PlayerInfo[playerid][EmpresaDono] = DOF2_GetInt(arquivo, "EmpresaDono");
+    PlayerInfo[playerid][FaccaoID] = DOF2_GetInt(arquivo, "FaccaoID");
+    PlayerInfo[playerid][FaccaoRank] = DOF2_GetInt(arquivo, "FaccaoRank");
+    PlayerInfo[playerid][VeiculoSlot1] = DOF2_GetInt(arquivo, "VeiculoSlot1");
+    PlayerInfo[playerid][VeiculoSlot2] = DOF2_GetInt(arquivo, "VeiculoSlot2");
+    PlayerInfo[playerid][VeiculoSlot3] = DOF2_GetInt(arquivo, "VeiculoSlot3");
+    PlayerInfo[playerid][LicencaArmas] = DOF2_GetInt(arquivo, "LicencaArmas");
+    PlayerInfo[playerid][LicencaVoo] = DOF2_GetInt(arquivo, "LicencaVoo");
+    PlayerInfo[playerid][LicencaBarco] = DOF2_GetInt(arquivo, "LicencaBarco");
+    PlayerInfo[playerid][LicencaVeiculo] = DOF2_GetInt(arquivo, "LicencaVeiculo");
+    PlayerInfo[playerid][Maconha] = DOF2_GetInt(arquivo, "Maconha");
+    PlayerInfo[playerid][Cocaina] = DOF2_GetInt(arquivo, "Cocaina");
+    PlayerInfo[playerid][Crack] = DOF2_GetInt(arquivo, "Crack");
+    PlayerInfo[playerid][ProcuradoNivel] = DOF2_GetInt(arquivo, "ProcuradoNivel");
+    PlayerInfo[playerid][ProcuradoTempo] = DOF2_GetInt(arquivo, "ProcuradoTempo");
+    PlayerInfo[playerid][MensagensPrivadas] = DOF2_GetInt(arquivo, "MensagensPrivadas");
+    PlayerInfo[playerid][SomAtivado] = DOF2_GetInt(arquivo, "SomAtivado");
+    PlayerInfo[playerid][ChatGlobal] = DOF2_GetInt(arquivo, "ChatGlobal");
+    
+    VerificarLogin[playerid] = true;
+    
+    printf("[LOGIN] %s (%d) fez login. Admin Level: %d", GetPlayerNameEx(playerid), playerid, PlayerInfo[playerid][Admin]);
+    return 1;
+}
+
+stock SalvarDados(playerid)
+{
+    if(!VerificarLogin[playerid]) return 0;
+    
+    format(arquivo, sizeof(arquivo), PASTA_CONTAS, GetPlayerNameEx(playerid));
+    
+    if(!DOF2_FileExists(arquivo)) return 0;
+    
+    // Atualizar posição atual
+    GetPlayerPos(playerid, PlayerInfo[playerid][PosX], PlayerInfo[playerid][PosY], PlayerInfo[playerid][PosZ]);
+    GetPlayerFacingAngle(playerid, PlayerInfo[playerid][PosR]);
+    PlayerInfo[playerid][Interior] = GetPlayerInterior(playerid);
+    PlayerInfo[playerid][VirtualW] = GetPlayerVirtualWorld(playerid);
+    GetPlayerHealth(playerid, PlayerInfo[playerid][VidaHP]);
+    GetPlayerArmour(playerid, PlayerInfo[playerid][ColeteHP]);
+    PlayerInfo[playerid][Dinheiro] = GetPlayerMoney(playerid);
+    
+    // Salvar tudo
+    DOF2_SetString(arquivo, "Senha", PlayerInfo[playerid][Senha]);
+    DOF2_SetString(arquivo, "Email", PlayerInfo[playerid][Email]);
+    DOF2_SetInt(arquivo, "Dinheiro", PlayerInfo[playerid][Dinheiro]);
+    DOF2_SetInt(arquivo, "Level", PlayerInfo[playerid][Level]);
+    DOF2_SetInt(arquivo, "Experiencia", PlayerInfo[playerid][Experiencia]);
+    DOF2_SetInt(arquivo, "Skin", PlayerInfo[playerid][Skin]);
+    DOF2_SetInt(arquivo, "Genero", PlayerInfo[playerid][Genero]);
+    DOF2_SetInt(arquivo, "Admin", PlayerInfo[playerid][Admin]);
+    DOF2_SetInt(arquivo, "Helper", PlayerInfo[playerid][Helper]);
+    DOF2_SetInt(arquivo, "Vip", PlayerInfo[playerid][Vip]);
+    DOF2_SetInt(arquivo, "Idade", PlayerInfo[playerid][Idade]);
+    DOF2_SetInt(arquivo, "Altura", PlayerInfo[playerid][Altura]);
+    DOF2_SetInt(arquivo, "Peso", PlayerInfo[playerid][Peso]);
+    DOF2_SetInt(arquivo, "Emprego", PlayerInfo[playerid][Emprego]);
+    DOF2_SetInt(arquivo, "EmpregoLevel", PlayerInfo[playerid][EmpregoLevel]);
+    DOF2_SetInt(arquivo, "Salario", PlayerInfo[playerid][Salario]);
+    DOF2_SetInt(arquivo, "UltimoPagamento", PlayerInfo[playerid][UltimoPagamento]);
+    DOF2_SetString(arquivo, "Titulo", PlayerInfo[playerid][Titulo]);
+    DOF2_SetString(arquivo, "Nascimento", PlayerInfo[playerid][Nascimento]);
+    DOF2_SetString(arquivo, "Nacionalidade", PlayerInfo[playerid][Nacionalidade]);
+    DOF2_SetString(arquivo, "EstadoCivil", PlayerInfo[playerid][EstadoCivil]);
+    DOF2_SetInt(arquivo, "Interior", PlayerInfo[playerid][Interior]);
+    DOF2_SetInt(arquivo, "VirtualW", PlayerInfo[playerid][VirtualW]);
+    DOF2_SetFloat(arquivo, "VidaHP", PlayerInfo[playerid][VidaHP]);
+    DOF2_SetFloat(arquivo, "ColeteHP", PlayerInfo[playerid][ColeteHP]);
+    DOF2_SetFloat(arquivo, "PosX", PlayerInfo[playerid][PosX]);
+    DOF2_SetFloat(arquivo, "PosY", PlayerInfo[playerid][PosY]);
+    DOF2_SetFloat(arquivo, "PosZ", PlayerInfo[playerid][PosZ]);
+    DOF2_SetFloat(arquivo, "PosR", PlayerInfo[playerid][PosR]);
+    DOF2_SetInt(arquivo, "HorasJogadas", PlayerInfo[playerid][HorasJogadas]);
+    DOF2_SetInt(arquivo, "MinutosJogados", PlayerInfo[playerid][MinutosJogados]);
+    DOF2_SetInt(arquivo, "Mortes", PlayerInfo[playerid][Mortes]);
+    DOF2_SetInt(arquivo, "Kills", PlayerInfo[playerid][Kills]);
+    DOF2_SetInt(arquivo, "TempoPreso", PlayerInfo[playerid][TempoPreso]);
+    DOF2_SetInt(arquivo, "TempoPrisao", PlayerInfo[playerid][TempoPrisao]);
+    DOF2_SetInt(arquivo, "Crimes", PlayerInfo[playerid][Crimes]);
+    DOF2_SetInt(arquivo, "Multas", PlayerInfo[playerid][Multas]);
+    DOF2_SetInt(arquivo, "Avisos", PlayerInfo[playerid][Avisos]);
+    DOF2_SetInt(arquivo, "ContaBanco", PlayerInfo[playerid][ContaBanco]);
+    DOF2_SetString(arquivo, "SenhaBanco", PlayerInfo[playerid][SenhaBanco]);
+    DOF2_SetInt(arquivo, "CasaID", PlayerInfo[playerid][CasaID]);
+    DOF2_SetInt(arquivo, "CasaChave", PlayerInfo[playerid][CasaChave]);
+    DOF2_SetInt(arquivo, "EmpresaID", PlayerInfo[playerid][EmpresaID]);
+    DOF2_SetInt(arquivo, "EmpresaDono", PlayerInfo[playerid][EmpresaDono]);
+    DOF2_SetInt(arquivo, "FaccaoID", PlayerInfo[playerid][FaccaoID]);
+    DOF2_SetInt(arquivo, "FaccaoRank", PlayerInfo[playerid][FaccaoRank]);
+    DOF2_SetInt(arquivo, "VeiculoSlot1", PlayerInfo[playerid][VeiculoSlot1]);
+    DOF2_SetInt(arquivo, "VeiculoSlot2", PlayerInfo[playerid][VeiculoSlot2]);
+    DOF2_SetInt(arquivo, "VeiculoSlot3", PlayerInfo[playerid][VeiculoSlot3]);
+    DOF2_SetInt(arquivo, "LicencaArmas", PlayerInfo[playerid][LicencaArmas]);
+    DOF2_SetInt(arquivo, "LicencaVoo", PlayerInfo[playerid][LicencaVoo]);
+    DOF2_SetInt(arquivo, "LicencaBarco", PlayerInfo[playerid][LicencaBarco]);
+    DOF2_SetInt(arquivo, "LicencaVeiculo", PlayerInfo[playerid][LicencaVeiculo]);
+    DOF2_SetInt(arquivo, "Maconha", PlayerInfo[playerid][Maconha]);
+    DOF2_SetInt(arquivo, "Cocaina", PlayerInfo[playerid][Cocaina]);
+    DOF2_SetInt(arquivo, "Crack", PlayerInfo[playerid][Crack]);
+    DOF2_SetInt(arquivo, "ProcuradoNivel", PlayerInfo[playerid][ProcuradoNivel]);
+    DOF2_SetInt(arquivo, "ProcuradoTempo", PlayerInfo[playerid][ProcuradoTempo]);
+    DOF2_SetInt(arquivo, "MensagensPrivadas", PlayerInfo[playerid][MensagensPrivadas]);
+    DOF2_SetInt(arquivo, "SomAtivado", PlayerInfo[playerid][SomAtivado]);
+    DOF2_SetInt(arquivo, "ChatGlobal", PlayerInfo[playerid][ChatGlobal]);
+    DOF2_SaveFile();
+    
+    return 1;
+}
+
+// ============== TODOS OS COMANDOS ZCMD ==============
+
+// ========== COMANDOS BÁSICOS ==========
+
+COMMAND:ajuda(playerid, params[])
+{
+    if(!VerificarLogin[playerid]) return SCM(playerid, COR_VERMELHO, "{F44336}» {FFFFFF}Você precisa estar logado!");
+    
+    SCM(playerid, COR_PRINCIPAL, "{9F2B8E}════════════════════════════════════════════════");
+    SCM(playerid, COR_PRINCIPAL, "{9F2B8E}                    COMANDOS GERAIS");
+    SCM(playerid, COR_PRINCIPAL, "{9F2B8E}════════════════════════════════════════════════");
+    SCM(playerid, COR_BRANCO, "{FFFFFF}/stats - Ver suas estatísticas");
+    SCM(playerid, COR_BRANCO, "{FFFFFF}/tempo - Ver tempo no servidor");
+    SCM(playerid, COR_BRANCO, "{FFFFFF}/dinheiro - Ver seu dinheiro");
+    SCM(playerid, COR_BRANCO, "{FFFFFF}/banco - Acessar sistema bancário");
+    SCM(playerid, COR_BRANCO, "{FFFFFF}/emprego - Sistema de empregos");
+    SCM(playerid, COR_BRANCO, "{FFFFFF}/trabalhar - Trabalhar no seu emprego");
+    SCM(playerid, COR_BRANCO, "{FFFFFF}/salario - Ver informações do salário");
+    SCM(playerid, COR_BRANCO, "{FFFFFF}/casa - Sistema de casas");
+    SCM(playerid, COR_BRANCO, "{FFFFFF}/empresa - Sistema de empresas");
+    SCM(playerid, COR_BRANCO, "{FFFFFF}/veiculo - Sistema de veículos");
+    SCM(playerid, COR_BRANCO, "{FFFFFF}/licencas - Ver suas licenças");
+    SCM(playerid, COR_BRANCO, "{FFFFFF}/rg - Ver seu RG");
+    SCM(playerid, COR_BRANCO, "{FFFFFF}/titulos - Sistema de títulos");
+    SCM(playerid, COR_BRANCO, "{FFFFFF}/inventario - Ver inventário");
+    SCM(playerid, COR_BRANCO, "{FFFFFF}/me [ação] - Ação em terceira pessoa");
+    SCM(playerid, COR_BRANCO, "{FFFFFF}/do [ação] - Descrever ambiente");
+    SCM(playerid, COR_BRANCO, "{FFFFFF}/b [texto] - Chat OOC local");
+    SCM(playerid, COR_BRANCO, "{FFFFFF}/admins - Ver administradores online");
+    SCM(playerid, COR_BRANCO, "{FFFFFF}/report [id] [motivo] - Reportar jogador");
+    SCM(playerid, COR_BRANCO, "{FFFFFF}/pm [id] [msg] - Mensagem privada");
+    SCM(playerid, COR_PRINCIPAL, "{9F2B8E}════════════════════════════════════════════════");
+    return 1;
+}
+
+COMMAND:comandos(playerid, params[])
+{
+    return cmd_ajuda(playerid, params);
+}
+
+COMMAND:stats(playerid, params[])
+{
+    if(!VerificarLogin[playerid]) return SCM(playerid, COR_VERMELHO, "{F44336}» {FFFFFF}Você precisa estar logado!");
+    
+    new targetid = playerid;
+    if(sscanf(params, "u", targetid))
+    {
+        targetid = playerid;
+    }
+    
+    if(!IsPlayerConnected(targetid) || !VerificarLogin[targetid])
+    {
+        return SCM(playerid, COR_VERMELHO, "{F44336}» {FFFFFF}Jogador não encontrado ou não logado!");
+    }
+    
+    format(gString, sizeof(gString), "{9F2B8E}════════════════════════════════════════════════");
+    SCM(playerid, COR_BRANCO, gString);
+    format(gString, sizeof(gString), "{9F2B8E}              ESTATÍSTICAS DE %s", GetPlayerNameEx(targetid));
+    SCM(playerid, COR_BRANCO, gString);
+    format(gString, sizeof(gString), "{9F2B8E}════════════════════════════════════════════════");
+    SCM(playerid, COR_BRANCO, gString);
+    
+    format(gString, sizeof(gString), "{FFFFFF}• Nome: {FFD700}%s {FFFFFF}| ID: {FFD700}%d {FFFFFF}| Level: {FFD700}%d", GetPlayerNameEx(targetid), targetid, PlayerInfo[targetid][Level]);
+    SCM(playerid, COR_BRANCO, gString);
+    
+    format(gString, sizeof(gString), "{FFFFFF}• Dinheiro: {4CAF50}$%d {FFFFFF}| Conta Banco: {4CAF50}%d", PlayerInfo[targetid][Dinheiro], PlayerInfo[targetid][ContaBanco]);
+    SCM(playerid, COR_BRANCO, gString);
+    
+    format(gString, sizeof(gString), "{FFFFFF}• Experiência: {2196F3}%d {FFFFFF}| Idade: {2196F3}%d {FFFFFF}| Gênero: {2196F3}%s", PlayerInfo[targetid][Experiencia], PlayerInfo[targetid][Idade], (PlayerInfo[targetid][Genero] == 0) ? "Masculino" : "Feminino");
+    SCM(playerid, COR_BRANCO, gString);
+    
+    format(gString, sizeof(gString), "{FFFFFF}• Emprego: {FF9800}%s {FFFFFF}| Level: {FF9800}%d {FFFFFF}| Salário: {4CAF50}$%d", NomesEmpregos[PlayerInfo[targetid][Emprego]], PlayerInfo[targetid][EmpregoLevel], PlayerInfo[targetid][Salario]);
+    SCM(playerid, COR_BRANCO, gString);
+    
+    format(gString, sizeof(gString), "{FFFFFF}• Título: {E91E63}%s", PlayerInfo[targetid][Titulo]);
+    SCM(playerid, COR_BRANCO, gString);
+    
+    format(gString, sizeof(gString), "{FFFFFF}• Horas Jogadas: {9C27B0}%d:%d {FFFFFF}| Kills: {F44336}%d {FFFFFF}| Mortes: {F44336}%d", PlayerInfo[targetid][HorasJogadas], PlayerInfo[targetid][MinutosJogados], PlayerInfo[targetid][Kills], PlayerInfo[targetid][Mortes]);
+    SCM(playerid, COR_BRANCO, gString);
+    
+    if(PlayerInfo[targetid][Admin] > 0)
+    {
+        format(gString, sizeof(gString), "{FFFFFF}• Administração: {FF5722}%s {FFFFFF}(%d)", NiveisAdmin[PlayerInfo[targetid][Admin]], PlayerInfo[targetid][Admin]);
+        SCM(playerid, COR_BRANCO, gString);
+    }
+    
+    if(PlayerInfo[targetid][FaccaoID] != -1)
+    {
+        format(gString, sizeof(gString), "{FFFFFF}• Facção: {673AB7}%s {FFFFFF}| Rank: {673AB7}%d", FaccaoInfo[PlayerInfo[targetid][FaccaoID]][FaccaoNome], PlayerInfo[targetid][FaccaoRank]);
+        SCM(playerid, COR_BRANCO, gString);
+    }
+    
+    format(gString, sizeof(gString), "{9F2B8E}════════════════════════════════════════════════");
+    SCM(playerid, COR_BRANCO, gString);
+    
+    return 1;
+}
+
+COMMAND:tempo(playerid, params[])
+{
+    if(!VerificarLogin[playerid]) return SCM(playerid, COR_VERMELHO, "{F44336}» {FFFFFF}Você precisa estar logado!");
+    
+    format(gString, sizeof(gString), "{9F2B8E}» {FFFFFF}Horário do servidor: {FFD700}%02d:%02d", ServerHora, ServerMinuto);
+    SCM(playerid, COR_BRANCO, gString);
+    
+    format(gString, sizeof(gString), "{9F2B8E}» {FFFFFF}Tempo jogado: {FFD700}%d horas e %d minutos", PlayerInfo[playerid][HorasJogadas], PlayerInfo[playerid][MinutosJogados]);
+    SCM(playerid, COR_BRANCO, gString);
+    
+    return 1;
+}
+
+COMMAND:dinheiro(playerid, params[])
+{
+    if(!VerificarLogin[playerid]) return SCM(playerid, COR_VERMELHO, "{F44336}» {FFFFFF}Você precisa estar logado!");
+    
+    format(gString, sizeof(gString), "{9F2B8E}» {FFFFFF}Dinheiro na mão: {4CAF50}$%d", GetPlayerMoney(playerid));
+    SCM(playerid, COR_BRANCO, gString);
+    
+    format(gString, sizeof(gString), "{9F2B8E}» {FFFFFF}Dinheiro no banco: {4CAF50}$%d", PlayerInfo[playerid][ContaBanco]);
+    SCM(playerid, COR_BRANCO, gString);
+    
+    return 1;
+}
+
+COMMAND:rg(playerid, params[])
+{
+    if(!VerificarLogin[playerid]) return SCM(playerid, COR_VERMELHO, "{F44336}» {FFFFFF}Você precisa estar logado!");
+    
+    MostrarRG(playerid);
+    return 1;
+}
+
+COMMAND:me(playerid, params[])
+{
+    if(!VerificarLogin[playerid]) return SCM(playerid, COR_VERMELHO, "{F44336}» {FFFFFF}Você precisa estar logado!");
+    
+    if(isnull(params)) return SCM(playerid, COR_VERMELHO, "{F44336}» {FFFFFF}Use: /me [ação]");
+    
+    format(gString, sizeof(gString), "{C8E6C9}* %s %s", GetPlayerNameEx(playerid), params);
+    
+    new Float:x, Float:y, Float:z;
+    GetPlayerPos(playerid, x, y, z);
+    
+    for(new i = 0; i < MAX_PLAYERS; i++)
+    {
+        if(IsPlayerConnected(i) && GetPlayerVirtualWorld(i) == GetPlayerVirtualWorld(playerid))
+        {
+            if(IsPlayerInRangeOfPoint(i, 20.0, x, y, z))
+            {
+                SCM(i, COR_BRANCO, gString);
+            }
+        }
+    }
+    
+    return 1;
+}
+
+COMMAND:do(playerid, params[])
+{
+    if(!VerificarLogin[playerid]) return SCM(playerid, COR_VERMELHO, "{F44336}» {FFFFFF}Você precisa estar logado!");
+    
+    if(isnull(params)) return SCM(playerid, COR_VERMELHO, "{F44336}» {FFFFFF}Use: /do [ação]");
+    
+    format(gString, sizeof(gString), "{FFCCBC}* %s (( %s ))", params, GetPlayerNameEx(playerid));
+    
+    new Float:x, Float:y, Float:z;
+    GetPlayerPos(playerid, x, y, z);
+    
+    for(new i = 0; i < MAX_PLAYERS; i++)
+    {
+        if(IsPlayerConnected(i) && GetPlayerVirtualWorld(i) == GetPlayerVirtualWorld(playerid))
+        {
+            if(IsPlayerInRangeOfPoint(i, 20.0, x, y, z))
+            {
+                SCM(i, COR_BRANCO, gString);
+            }
+        }
+    }
+    
+    return 1;
+}
+
+COMMAND:b(playerid, params[])
+{
+    if(!VerificarLogin[playerid]) return SCM(playerid, COR_VERMELHO, "{F44336}» {FFFFFF}Você precisa estar logado!");
+    
+    if(isnull(params)) return SCM(playerid, COR_VERMELHO, "{F44336}» {FFFFFF}Use: /b [texto]");
+    
+    format(gString, sizeof(gString), "{9E9E9E}(( %s[%d]: %s ))", GetPlayerNameEx(playerid), playerid, params);
+    
+    new Float:x, Float:y, Float:z;
+    GetPlayerPos(playerid, x, y, z);
+    
+    for(new i = 0; i < MAX_PLAYERS; i++)
+    {
+        if(IsPlayerConnected(i) && GetPlayerVirtualWorld(i) == GetPlayerVirtualWorld(playerid))
+        {
+            if(IsPlayerInRangeOfPoint(i, 20.0, x, y, z))
+            {
+                SCM(i, COR_BRANCO, gString);
+            }
+        }
+    }
+    
+    return 1;
+}
+
+// ========== SISTEMA DE COMUNICAÇÃO ==========
+
+COMMAND:pm(playerid, params[])
+{
+    if(!VerificarLogin[playerid]) return SCM(playerid, COR_VERMELHO, "{F44336}» {FFFFFF}Você precisa estar logado!");
+    
+    new targetid, mensagem[128];
+    if(sscanf(params, "us[128]", targetid, mensagem)) return SCM(playerid, COR_VERMELHO, "{F44336}» {FFFFFF}Use: /pm [id] [mensagem]");
+    
+    if(!IsPlayerConnected(targetid) || !VerificarLogin[targetid])
+    {
+        return SCM(playerid, COR_VERMELHO, "{F44336}» {FFFFFF}Jogador não encontrado!");
+    }
+    
+    if(targetid == playerid)
+    {
+        return SCM(playerid, COR_VERMELHO, "{F44336}» {FFFFFF}Você não pode enviar mensagem para si mesmo!");
+    }
+    
+    if(!PlayerInfo[targetid][MensagensPrivadas])
+    {
+        return SCM(playerid, COR_VERMELHO, "{F44336}» {FFFFFF}Este jogador desabilitou mensagens privadas!");
+    }
+    
+    format(gString, sizeof(gString), "{FFD54F}[PM] De %s[%d]: {FFFFFF}%s", GetPlayerNameEx(playerid), playerid, mensagem);
+    SCM(targetid, COR_BRANCO, gString);
+    
+    format(gString, sizeof(gString), "{FFD54F}[PM] Para %s[%d]: {FFFFFF}%s", GetPlayerNameEx(targetid), targetid, mensagem);
+    SCM(playerid, COR_BRANCO, gString);
+    
+    PlayerPlaySound(targetid, 1057, 0.0, 0.0, 0.0);
+    
+    return 1;
+}
+
+COMMAND:admins(playerid, params[])
+{
+    if(!VerificarLogin[playerid]) return SCM(playerid, COR_VERMELHO, "{F44336}» {FFFFFF}Você precisa estar logado!");
+    
+    SCM(playerid, COR_PRINCIPAL, "{9F2B8E}» {FFFFFF}Administradores Online:");
+    
+    new count = 0;
+    for(new i = 0; i < MAX_PLAYERS; i++)
+    {
+        if(IsPlayerConnected(i) && VerificarLogin[i] && PlayerInfo[i][Admin] > 0)
+        {
+            format(gString, sizeof(gString), "{FFFFFF}• %s[%d] - %s", GetPlayerNameEx(i), i, NiveisAdmin[PlayerInfo[i][Admin]]);
+            SCM(playerid, COR_BRANCO, gString);
+            count++;
+        }
+    }
+    
+    if(count == 0)
+    {
+        SCM(playerid, COR_CINZA, "{9E9E9E}» Nenhum administrador online no momento.");
+    }
+    
+    return 1;
+}
+
+COMMAND:report(playerid, params[])
+{
+    if(!VerificarLogin[playerid]) return SCM(playerid, COR_VERMELHO, "{F44336}» {FFFFFF}Você precisa estar logado!");
+    
+    new targetid, motivo[128];
+    if(sscanf(params, "us[128]", targetid, motivo)) return SCM(playerid, COR_VERMELHO, "{F44336}» {FFFFFF}Use: /report [id] [motivo]");
+    
+    if(!IsPlayerConnected(targetid))
+    {
+        return SCM(playerid, COR_VERMELHO, "{F44336}» {FFFFFF}Jogador não encontrado!");
+    }
+    
+    if(targetid == playerid)
+    {
+        return SCM(playerid, COR_VERMELHO, "{F44336}» {FFFFFF}Você não pode reportar a si mesmo!");
+    }
+    
+    // Enviar para todos os admins
+    format(gString, sizeof(gString), "{FF5722}[REPORT] %s[%d] reportou %s[%d]: %s", GetPlayerNameEx(playerid), playerid, GetPlayerNameEx(targetid), targetid, motivo);
+    
+    for(new i = 0; i < MAX_PLAYERS; i++)
+    {
+        if(IsPlayerConnected(i) && VerificarLogin[i] && PlayerInfo[i][Admin] > 0)
+        {
+            SCM(i, COR_BRANCO, gString);
+            PlayerPlaySound(i, 1057, 0.0, 0.0, 0.0);
+        }
+    }
+    
+    SCM(playerid, COR_VERDE, "{4CAF50}» {FFFFFF}Report enviado para os administradores!");
+    
+    return 1;
+}
+
+// ========== SISTEMA BANCÁRIO ==========
+
+COMMAND:banco(playerid, params[])
+{
+    if(!VerificarLogin[playerid]) return SCM(playerid, COR_VERMELHO, "{F44336}» {FFFFFF}Você precisa estar logado!");
+    
+    if(!IsPlayerInRangeOfPoint(playerid, 3.0, 1462.0, -1012.0, 26.8))
+    {
+        return SCM(playerid, COR_VERMELHO, "{F44336}» {FFFFFF}Você não está próximo ao banco!");
+    }
+    
+    SPD(playerid, D_BANCO_MENU, DIALOG_STYLE_LIST, 
+        "{9F2B8E}• BANCO - Menu Principal", 
+        "{FFFFFF}💰 Consultar Saldo\n{FFFFFF}💳 Depositar Dinheiro\n{FFFFFF}💸 Sacar Dinheiro\n{FFFFFF}🔄 Transferir Dinheiro\n{FFFFFF}🔒 Alterar Senha", 
+        "Selecionar", "Cancelar");
+    
+    return 1;
+}
+
+COMMAND:depositar(playerid, params[])
+{
+    if(!VerificarLogin[playerid]) return SCM(playerid, COR_VERMELHO, "{F44336}» {FFFFFF}Você precisa estar logado!");
+    
+    if(!IsPlayerInRangeOfPoint(playerid, 3.0, 1462.0, -1012.0, 26.8))
+    {
+        return SCM(playerid, COR_VERMELHO, "{F44336}» {FFFFFF}Você não está próximo ao banco!");
+    }
+    
+    new quantia;
+    if(sscanf(params, "d", quantia)) return SCM(playerid, COR_VERMELHO, "{F44336}» {FFFFFF}Use: /depositar [quantia]");
+    
+    if(quantia < 1 || quantia > 10000000)
+    {
+        return SCM(playerid, COR_VERMELHO, "{F44336}» {FFFFFF}Quantia inválida! (Min: $1 - Max: $10.000.000)");
+    }
+    
+    if(GetPlayerMoney(playerid) < quantia)
+    {
+        return SCM(playerid, COR_VERMELHO, "{F44336}» {FFFFFF}Você não tem dinheiro suficiente!");
+    }
+    
+    GivePlayerMoney(playerid, -quantia);
+    PlayerInfo[playerid][ContaBanco] += quantia;
+    
+    format(gString, sizeof(gString), "{4CAF50}» {FFFFFF}Você depositou {4CAF50}$%d{FFFFFF}. Saldo atual: {4CAF50}$%d", quantia, PlayerInfo[playerid][ContaBanco]);
+    SCM(playerid, COR_VERDE, gString);
+    
+    PlayerPlaySound(playerid, 1052, 0.0, 0.0, 0.0);
+    SalvarDados(playerid);
+    
+    return 1;
+}
+
+COMMAND:sacar(playerid, params[])
+{
+    if(!VerificarLogin[playerid]) return SCM(playerid, COR_VERMELHO, "{F44336}» {FFFFFF}Você precisa estar logado!");
+    
+    if(!IsPlayerInRangeOfPoint(playerid, 3.0, 1462.0, -1012.0, 26.8))
+    {
+        return SCM(playerid, COR_VERMELHO, "{F44336}» {FFFFFF}Você não está próximo ao banco!");
+    }
+    
+    new quantia;
+    if(sscanf(params, "d", quantia)) return SCM(playerid, COR_VERMELHO, "{F44336}» {FFFFFF}Use: /sacar [quantia]");
+    
+    if(quantia < 1 || quantia > 10000000)
+    {
+        return SCM(playerid, COR_VERMELHO, "{F44336}» {FFFFFF}Quantia inválida! (Min: $1 - Max: $10.000.000)");
+    }
+    
+    if(PlayerInfo[playerid][ContaBanco] < quantia)
+    {
+        return SCM(playerid, COR_VERMELHO, "{F44336}» {FFFFFF}Saldo insuficiente no banco!");
+    }
+    
+    PlayerInfo[playerid][ContaBanco] -= quantia;
+    GivePlayerMoney(playerid, quantia);
+    
+    format(gString, sizeof(gString), "{4CAF50}» {FFFFFF}Você sacou {4CAF50}$%d{FFFFFF}. Saldo restante: {4CAF50}$%d", quantia, PlayerInfo[playerid][ContaBanco]);
+    SCM(playerid, COR_VERDE, gString);
+    
+    PlayerPlaySound(playerid, 1052, 0.0, 0.0, 0.0);
+    SalvarDados(playerid);
+    
+    return 1;
+}
+
+// ============== IMPLEMENTAÇÃO DE TODAS AS FUNÇÕES FORWARD ==============
+
+public LimparMensagemLogin(playerid)
+{
+    if(!IsPlayerConnected(playerid)) return;
+    
+    GameTextForPlayer(playerid, " ", 1000, 3);
+    return 1;
+}
+
+public UmSegundo()
+{
+    // Sistema de tempo do servidor
+    ServerMinuto++;
+    if(ServerMinuto >= 60)
+    {
+        ServerMinuto = 0;
+        ServerHora++;
+        if(ServerHora >= 24)
+        {
+            ServerHora = 0;
+        }
+        SetWorldTime(ServerHora);
+    }
+    
+    // Atualizar tempo jogado dos players
+    for(new i = 0; i < MAX_PLAYERS; i++)
+    {
+        if(IsPlayerConnected(i) && VerificarLogin[i])
+        {
+            PlayerInfo[i][MinutosJogados]++;
+            if(PlayerInfo[i][MinutosJogados] >= 60)
+            {
+                PlayerInfo[i][MinutosJogados] = 0;
+                PlayerInfo[i][HorasJogadas]++;
+                
+                // Ganhar experiência por tempo online
+                PlayerInfo[i][Experiencia] += 2;
+                
+                // Level up check
+                new experiencia_necessaria = PlayerInfo[i][Level] * 100;
+                if(PlayerInfo[i][Experiencia] >= experiencia_necessaria)
+                {
+                    PlayerInfo[i][Level]++;
+                    PlayerInfo[i][Experiencia] = 0;
+                    format(gString, sizeof(gString), "{FFD700}» {FFFFFF}Parabéns! Você subiu para o level {FFD700}%d{FFFFFF}!", PlayerInfo[i][Level]);
+                    SCM(i, COR_BRANCO, gString);
+                    GameTextForPlayer(i, "~g~LEVEL UP!", 3000, 3);
+                }
+            }
+        }
+    }
+    return 1;
+}
+
+public PagamentoSalario()
+{
+    new count = 0;
+    for(new i = 0; i < MAX_PLAYERS; i++)
+    {
+        if(IsPlayerConnected(i) && VerificarLogin[i])
+        {
+            if(PlayerInfo[i][Emprego] > 0)
+            {
+                new salario = SalariosEmpregos[PlayerInfo[i][Emprego]] + (PlayerInfo[i][EmpregoLevel] * 100);
+                PlayerInfo[i][Dinheiro] += salario;
+                GivePlayerMoney(i, salario);
+                
+                format(gString, sizeof(gString), "{4CAF50}» {FFFFFF}Você recebeu seu salário: {4CAF50}$%d {FFFFFF}({FFD700}%s{FFFFFF})", salario, NomesEmpregos[PlayerInfo[i][Emprego]]);
+                SCM(i, COR_VERDE, gString);
+                
+                PlayerInfo[i][UltimoPagamento] = gettime();
+                count++;
+            }
+        }
+    }
+    
+    format(gString, sizeof(gString), "{2196F3}» {FFFFFF}Salários pagos para %d trabalhadores!", count);
+    SCMTA(COR_BRANCO, gString);
+    printf("[SISTEMA] Pagamento de salários realizado para %d jogadores", count);
+    return 1;
+}
+
+public LimparDadosTemporarios()
+{
+    // Limpar dados temporários não utilizados
+    for(new i = 0; i < MAX_PLAYERS; i++)
+    {
+        if(!IsPlayerConnected(i))
+        {
+            UltimaMensagem[i] = 0;
+            MensagensEnviadas[i] = 0;
+        }
+    }
+    return 1;
+}
+
+public KickPlayer(playerid)
+{
+    if(IsPlayerConnected(playerid))
+    {
+        Kick(playerid);
+    }
+    return 1;
+}
+
+public MensagemAutomatica()
+{
+    new mensagens[][128] = {
+        "{9F2B8E}» {FFFFFF}Use {9F2B8E}/ajuda {FFFFFF}para ver todos os comandos disponíveis!",
+        "{9F2B8E}» {FFFFFF}Visite nossa loja de doações em {9F2B8E}www.servidor.com/vip",
+        "{9F2B8E}» {FFFFFF}Reporte bugs e problemas usando {9F2B8E}/report {FFFFFF}[ID] [motivo]",
+        "{9F2B8E}» {FFFFFF}Entre em nosso Discord: {9F2B8E}discord.gg/servidor",
+        "{9F2B8E}» {FFFFFF}Respeite as regras e seja um bom cidadão roleplay!",
+        "{9F2B8E}» {FFFFFF}Use {9F2B8E}/rg {FFFFFF}para ver suas informações pessoais",
+        "{9F2B8E}» {FFFFFF}Compre casas e empresas para investir no servidor!"
+    };
+    
+    SCMTA(COR_BRANCO, mensagens[MensagemAtual]);
+    MensagemAtual++;
+    if(MensagemAtual >= sizeof(mensagens))
+    {
+        MensagemAtual = 0;
+    }
+    
+    SetTimer("MensagemAutomatica", 300000, false); // 5 minutos
+    return 1;
+}
+
+public ProcessarPagamentos()
+{
+    // Processar aluguel das casas
+    for(new i = 0; i < MAX_PLAYERS; i++)
+    {
+        if(IsPlayerConnected(i) && VerificarLogin[i])
+        {
+            if(PlayerInfo[i][CasaID] != -1)
+            {
+                new casaid = PlayerInfo[i][CasaID];
+                if(casaid < TotalCasas)
+                {
+                    if(PlayerInfo[i][Dinheiro] >= CasaInfo[casaid][CasaAluguel])
+                    {
+                        PlayerInfo[i][Dinheiro] -= CasaInfo[casaid][CasaAluguel];
+                        ResetPlayerMoney(i);
+                        GivePlayerMoney(i, PlayerInfo[i][Dinheiro]);
+                        
+                        format(gString, sizeof(gString), "{FF9800}» {FFFFFF}Você pagou ${FF9800}%d {FFFFFF}de aluguel da sua casa", CasaInfo[casaid][CasaAluguel]);
+                        SCM(i, COR_BRANCO, gString);
+                    }
+                    else
+                    {
+                        SCM(i, COR_VERMELHO, "{F44336}» {FFFFFF}Você foi despejado por falta de pagamento!");
+                        PlayerInfo[i][CasaID] = -1;
+                        format(CasaInfo[casaid][CasaDono], MAX_PLAYER_NAME, "Ninguem");
+                        CasaInfo[casaid][CasaVenda] = 1;
+                        AtualizarLabelCasa(casaid);
+                        SalvarCasa(casaid);
+                    }
+                }
+            }
+        }
+    }
+    return 1;
+}
+
+public VerificarJogadoresOnline()
+{
+    new players_online = 0;
+    for(new i = 0; i < MAX_PLAYERS; i++)
+    {
+        if(IsPlayerConnected(i))
+        {
+            players_online++;
+            
+            // Salvar dados automaticamente a cada 30 segundos
+            if(VerificarLogin[i])
+            {
+                SalvarDados(i);
+            }
+        }
+    }
+    
+    // Log de status do servidor
+    if(players_online > 0)
+    {
+        printf("[SERVIDOR] %d jogadores online - Dados salvos automaticamente", players_online);
+    }
+    return 1;
+}
+
+public AntiFlood()
+{
+    for(new i = 0; i < MAX_PLAYERS; i++)
+    {
+        if(IsPlayerConnected(i))
+        {
+            if(gettime() - UltimaMensagem[i] > 3)
+            {
+                MensagensEnviadas[i] = 0;
+            }
+        }
+    }
+    return 1;
+}
+
+// ============== FUNÇÕES AUXILIARES ADICIONAIS ==============
+
+stock AtualizarLabelCasa(casaid)
+{
+    if(casaid < 0 || casaid >= MAX_CASAS) return 0;
+    
+    // Destruir label antiga se existir
+    if(CasaInfo[casaid][CasaLabel] != Text3D:INVALID_3DTEXT_ID)
+    {
+        Delete3DTextLabel(CasaInfo[casaid][CasaLabel]);
+        CasaInfo[casaid][CasaLabel] = Text3D:INVALID_3DTEXT_ID;
+    }
+    
+    // Criar nova label
+    if(CasaInfo[casaid][CasaVenda] == 1)
+    {
+        format(gString, sizeof(gString), 
+            "{4CAF50}CASA À VENDA\n{FFFFFF}ID: %d\n{FFFFFF}Preço: {4CAF50}$%d\n{FFFFFF}Digite: {FFD700}/casa comprar", 
+            casaid, CasaInfo[casaid][CasaPreco]);
+        CasaInfo[casaid][CasaLabel] = Create3DTextLabel(gString, COR_VERDE, 
+            CasaInfo[casaid][CasaX], CasaInfo[casaid][CasaY], CasaInfo[casaid][CasaZ] + 0.5, 10.0, 0, 1);
+    }
+    else
+    {
+        format(gString, sizeof(gString), 
+            "{9F2B8E}CASA OCUPADA\n{FFFFFF}ID: %d\n{FFFFFF}Dono: {FFD700}%s\n{FFFFFF}Digite: {FFD700}/casa", 
+            casaid, CasaInfo[casaid][CasaDono]);
+        CasaInfo[casaid][CasaLabel] = Create3DTextLabel(gString, COR_PRINCIPAL, 
+            CasaInfo[casaid][CasaX], CasaInfo[casaid][CasaY], CasaInfo[casaid][CasaZ] + 0.5, 10.0, 0, 1);
+    }
+    
+    return 1;
+}
+
+stock AtualizarLabelEmpresa(empresaid)
+{
+    if(empresaid < 0 || empresaid >= MAX_EMPRESAS) return 0;
+    
+    // Destruir label antiga se existir  
+    if(EmpresaInfo[empresaid][EmpresaLabel] != Text3D:INVALID_3DTEXT_ID)
+    {
+        Delete3DTextLabel(EmpresaInfo[empresaid][EmpresaLabel]);
+        EmpresaInfo[empresaid][EmpresaLabel] = Text3D:INVALID_3DTEXT_ID;
+    }
+    
+    // Criar nova label
+    if(EmpresaInfo[empresaid][EmpresaVenda] == 1)
+    {
+        format(gString, sizeof(gString), 
+            "{FF9800}EMPRESA À VENDA\n{FFFFFF}%s\n{FFFFFF}ID: %d\n{FFFFFF}Preço: {4CAF50}$%d\n{FFFFFF}Digite: {FFD700}/empresa comprar", 
+            EmpresaInfo[empresaid][EmpresaNome], empresaid, EmpresaInfo[empresaid][EmpresaPreco]);
+        EmpresaInfo[empresaid][EmpresaLabel] = Create3DTextLabel(gString, COR_LARANJA, 
+            EmpresaInfo[empresaid][EmpresaX], EmpresaInfo[empresaid][EmpresaY], EmpresaInfo[empresaid][EmpresaZ] + 0.5, 15.0, 0, 1);
+    }
+    else
+    {
+        format(gString, sizeof(gString), 
+            "{2196F3}%s\n{FFFFFF}ID: %d\n{FFFFFF}Dono: {FFD700}%s\n{FFFFFF}Digite: {FFD700}/empresa", 
+            EmpresaInfo[empresaid][EmpresaNome], empresaid, EmpresaInfo[empresaid][EmpresaDono]);
+        EmpresaInfo[empresaid][EmpresaLabel] = Create3DTextLabel(gString, COR_AZUL, 
+            EmpresaInfo[empresaid][EmpresaX], EmpresaInfo[empresaid][EmpresaY], EmpresaInfo[empresaid][EmpresaZ] + 0.5, 15.0, 0, 1);
+    }
+    
+    return 1;
+}
+
+// ============== SISTEMA DE HASH DE SENHA BÁSICO ==============
+
+stock HashSenha(senha[], output[], outputsize)
+{
+    // Hash simples baseado em soma e XOR
+    new hash = 0;
+    new len = strlen(senha);
+    
+    for(new i = 0; i < len; i++)
+    {
+        hash += senha[i] * (i + 1);
+        hash ^= senha[i];
+        hash += 31;
+    }
+    
+    format(output, outputsize, "%d", hash);
+    return 1;
+}
+
+stock VerificarSenha(senha[], hash_armazenado[])
+{
+    new hash_calculado[32];
+    HashSenha(senha, hash_calculado, sizeof(hash_calculado));
+    
+    return !strcmp(hash_calculado, hash_armazenado, false);
+}
